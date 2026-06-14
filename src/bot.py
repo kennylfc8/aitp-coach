@@ -1,13 +1,22 @@
 import os
 from aiogram import Router, F
-from aiogram.types import Message, User
+from aiogram.types import Message, User, FSInputFile
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+import asyncio
 
 from .models import PlayerModel
 from .storage import load_player, save_player, create_player
 from .coach_brain import generate_daily_plan, analyze_checkin, update_player_model
+from .tts import generate_daily_voice_message, generate_checkin_feedback_voice
+from .videos import recommend_videos, format_video_recommendations
+from .polish import (
+    check_and_update_streak,
+    format_streak_message,
+    detect_language_from_message,
+    update_language_preference,
+)
 
 
 router = Router()
@@ -27,9 +36,17 @@ def get_user_language(user_data: dict) -> str:
     return user_data.get(LANG_KEY, "RU")
 
 
-def format_plan_message(daily_plan, language: str) -> str:
+def format_plan_message(daily_plan, player: PlayerModel) -> str:
+    language = player.language
+    focus_keywords = [player.current_focus]
+    if player.weaknesses:
+        focus_keywords.extend(player.weaknesses[:2])
+
+    videos = recommend_videos(focus_keywords, language, player.level, limit=2)
+    video_text = format_video_recommendations(videos, language) if videos else ""
+
     if language == "RU":
-        return f"""🎾 **План на сегодня**
+        plan_text = f"""🎾 **План на сегодня**
 
 **Фокус:** {daily_plan.focus}
 
@@ -38,9 +55,10 @@ def format_plan_message(daily_plan, language: str) -> str:
 
 ⏱️ **Время:** {daily_plan.estimated_time_minutes} минут
 
+{video_text}
 Вперёд! 💪"""
     else:
-        return f"""🎾 **Today's Plan**
+        plan_text = f"""🎾 **Today's Plan**
 
 **Focus:** {daily_plan.focus}
 
@@ -49,7 +67,10 @@ def format_plan_message(daily_plan, language: str) -> str:
 
 ⏱️ **Time:** {daily_plan.estimated_time_minutes} minutes
 
+{video_text}
 Let's go! 💪"""
+
+    return plan_text
 
 
 @router.message(Command("start"))
@@ -137,7 +158,7 @@ async def process_experience(message: Message, state: FSMContext):
 
     # Generate first daily plan
     plan = generate_daily_plan(player)
-    await message.answer(format_plan_message(plan, player.language))
+    await message.answer(format_plan_message(plan, player))
 
 
 @router.message(Command("plan"))
@@ -149,8 +170,36 @@ async def cmd_plan(message: Message):
         await message.answer("Сначала создай профиль: /start")
         return
 
+    # Send "generating..." indicator
+    status_msg = await message.answer(
+        "⏳ Generating your plan..." if player.language == "EN" else "⏳ Генерирую план..."
+    )
+
     plan = generate_daily_plan(player)
-    await message.answer(format_plan_message(plan, player.language))
+
+    # Send text plan with videos
+    await message.answer(format_plan_message(plan, player))
+
+    # Generate and send voice (optional, non-blocking)
+    try:
+        voice_data = await generate_daily_voice_message(
+            plan.focus, plan.drill, player.language
+        )
+        if voice_data and len(voice_data) > 1000:  # Valid audio data
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(voice_data)
+                tmp_path = tmp.name
+
+            try:
+                await message.answer_voice(FSInputFile(tmp_path))
+            finally:
+                os.unlink(tmp_path)
+    except Exception as e:
+        print(f"Voice generation error: {e}")
+
+    # Delete status message
+    await status_msg.delete()
 
 
 @router.message(Command("checkin"))
@@ -187,22 +236,36 @@ async def handle_checkin_text(message: Message, state: FSMContext):
     if not data.get("waiting_for_checkin"):
         return
 
+    # Auto-detect language from check-in text
+    update_language_preference(player, message.text)
+
     # Analyze check-in
     feedback = analyze_checkin(player, message.text)
     update_player_model(player, message.text)
+
+    # Update streak
+    new_streak, is_broken = check_and_update_streak(player)
+    player.streak = new_streak
     save_player(player)
 
     await state.clear()
+
+    # Send feedback
     await message.answer(feedback)
 
+    # Send streak update
+    streak_msg = format_streak_message(new_streak, is_broken, player.language)
+    await message.answer(streak_msg)
+
+    # Send encouragement
     if player.language == "RU":
         await message.answer(
-            f"📊 Streak: {player.streak} дней подряд 🔥\n\n"
+            "Спасибо за работу! 💪\n\n"
             "Возвращайся завтра для нового плана!"
         )
     else:
         await message.answer(
-            f"📊 Streak: {player.streak} days in a row 🔥\n\n"
+            "Thanks for the work! 💪\n\n"
             "See you tomorrow for a new plan!"
         )
 
@@ -264,6 +327,31 @@ async def cmd_ru(message: Message):
         player.language = "RU"
         save_player(player)
         await message.answer("Язык изменён на русский. 🇷🇺")
+
+
+@router.message(Command("videos"))
+async def cmd_videos(message: Message):
+    user: User = message.from_user
+    player = load_player(user.id)
+
+    if not player:
+        await message.answer("Сначала создай профиль: /start")
+        return
+
+    focus_keywords = [player.current_focus]
+    if player.weaknesses:
+        focus_keywords.extend(player.weaknesses[:2])
+
+    videos = recommend_videos(focus_keywords, player.language, player.level, limit=5)
+
+    if videos:
+        msg = format_video_recommendations(videos, player.language)
+        await message.answer(msg)
+    else:
+        if player.language == "RU":
+            await message.answer("К сожалению, видео не найдены.")
+        else:
+            await message.answer("Unfortunately, no videos found.")
 
 
 def _make_buttons(options):

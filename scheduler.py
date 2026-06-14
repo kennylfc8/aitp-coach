@@ -11,6 +11,7 @@ Usage:
 import os
 import sys
 import json
+import tempfile
 from pathlib import Path
 from datetime import datetime
 import asyncio
@@ -19,6 +20,7 @@ import aiohttp
 from src.models import PlayerModel
 from src.coach_brain import generate_daily_plan, get_system_prompt
 from src.storage import load_player, PLAYERS_DIR
+from src.tts import generate_daily_voice_message
 
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -41,6 +43,23 @@ async def send_telegram_message(chat_id: int, text: str) -> bool:
         except Exception as e:
             print(f"Error sending message to {chat_id}: {e}")
             return False
+
+
+async def send_telegram_voice(chat_id: int, voice_data: bytes) -> bool:
+    """Send voice message via Telegram API."""
+    url = f"{TELEGRAM_API_URL}{TELEGRAM_BOT_TOKEN}/sendVoice"
+
+    try:
+        data = aiohttp.FormData()
+        data.add_field('chat_id', str(chat_id))
+        data.add_field('voice', voice_data, filename='coach.wav', content_type='audio/wav')
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, data=data, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                return resp.status == 200
+    except Exception as e:
+        print(f"Error sending voice to {chat_id}: {e}")
+        return False
 
 
 async def send_morning_plans():
@@ -93,12 +112,24 @@ async def send_morning_plans():
 
 Let's go! 💪"""
 
-            # Send message
+            # Send text message
             success = await send_telegram_message(user_id, message)
             if success:
                 print(f"✓ Sent plan to {user_id} ({player.name})")
             else:
                 print(f"✗ Failed to send plan to {user_id}")
+
+            # Try to send voice (non-blocking failure)
+            try:
+                voice_data = await generate_daily_voice_message(
+                    plan.focus, plan.drill, player.language
+                )
+                if voice_data and len(voice_data) > 1000:
+                    voice_success = await send_telegram_voice(user_id, voice_data)
+                    if voice_success:
+                        print(f"  ♪ Voice sent")
+            except Exception as e:
+                print(f"  ⚠ Voice generation skipped: {e}")
 
         except Exception as e:
             print(f"Error processing {player_file}: {e}")
