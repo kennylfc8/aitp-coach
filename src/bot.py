@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 import asyncio
 
-from .models import PlayerModel
+from .models import PlayerModel, TrainingSession
 from .storage import load_player, save_player, create_player
 from .coach_brain import generate_daily_plan, analyze_checkin, update_player_model
 from .tts import generate_daily_voice_message, generate_checkin_feedback_voice
@@ -20,6 +20,8 @@ from .polish import (
 )
 from .assessment import ASSESSMENT_QUESTIONS, DetailedPlayerAssessment, format_assessment_summary
 from .stt import transcribe_voice
+from .training_schedule import TRAINING_TEMPLATES, format_schedule_summary
+from .plan_generator import get_today_sessions, format_daily_plan
 
 
 router = Router()
@@ -357,6 +359,125 @@ async def cmd_videos(message: Message):
             await message.answer("К сожалению, видео не найдены.")
         else:
             await message.answer("Unfortunately, no videos found.")
+
+
+@router.message(Command("schedule"))
+async def cmd_schedule(message: Message):
+    """Show current training schedule"""
+    user: User = message.from_user
+    player = load_player(user.id)
+
+    if not player:
+        await message.answer("Сначала создай профиль: /start")
+        return
+
+    if not player.training_sessions:
+        if player.language == "RU":
+            await message.answer(
+                "У тебя пока нет расписания тренировок.\n\n"
+                "Выбери готовый шаблон:\n"
+                "/schedule_casual (30 мин/день)\n"
+                "/schedule_intermediate (2 часа + тренировки)\n"
+                "/schedule_serious (3-4 часа/день)\n\n"
+                "Или создай свой: /schedule_custom"
+            )
+        else:
+            await message.answer(
+                "You don't have a training schedule yet.\n\n"
+                "Choose a template:\n"
+                "/schedule_casual (30 min/day)\n"
+                "/schedule_intermediate (2h + sessions)\n"
+                "/schedule_serious (3-4h/day)\n\n"
+                "Or create custom: /schedule_custom"
+            )
+        return
+
+    # Show current schedule
+    schedule_text = format_schedule_summary(
+        {"sessions": [{"id": s.id, "name": s.name, "day_of_week": s.day_of_week,
+                       "time": s.time, "duration_minutes": s.duration_minutes,
+                       "focus_areas": s.focus_areas, "session_type": s.session_type,
+                       "location": s.location, "description": s.name}
+         for s in player.training_sessions]},
+        player.language
+    )
+    await message.answer(schedule_text)
+
+    # Show today's sessions
+    today_sessions = get_today_sessions(player)
+    if today_sessions:
+        daily_plan = format_daily_plan(player, player.language)
+        await message.answer(daily_plan)
+
+
+@router.message(Command("schedule_casual"))
+async def cmd_schedule_casual(message: Message):
+    """Set casual training template"""
+    user: User = message.from_user
+    player = load_player(user.id)
+
+    if not player:
+        await message.answer("Сначала создай профиль: /start")
+        return
+
+    template = TRAINING_TEMPLATES.get("casual")
+    if template:
+        player.training_sessions = [
+            TrainingSession(**session.dict()) for session in template.sessions
+        ]
+        player.weekly_training_minutes = sum(s.duration_minutes for s in template.sessions) * 7
+
+        save_player(player)
+
+        if player.language == "RU":
+            await message.answer(
+                "✅ Расписание установлено: Casual\n\n"
+                "30 мин в день shadow-swings\n\n"
+                "/schedule - посмотри полное расписание"
+            )
+        else:
+            await message.answer(
+                "✅ Schedule set: Casual\n\n"
+                "30 min/day shadow swings\n\n"
+                "/schedule - view full schedule"
+            )
+
+
+@router.message(Command("schedule_intermediate"))
+async def cmd_schedule_intermediate(message: Message):
+    """Set intermediate training template"""
+    user: User = message.from_user
+    player = load_player(user.id)
+
+    if not player:
+        await message.answer("Сначала создай профиль: /start")
+        return
+
+    template = TRAINING_TEMPLATES.get("intermediate")
+    if template:
+        player.training_sessions = [
+            TrainingSession(**session.dict()) for session in template.sessions
+        ]
+        player.weekly_training_minutes = 20 + 20 + 120 * 3  # Morning + evening + 3x court
+
+        save_player(player)
+
+        if player.language == "RU":
+            await message.answer(
+                "✅ Расписание установлено: Intermediate\n\n"
+                "20 мин утро (shadow-swings)\n"
+                "20 мин вечер (footwork)\n"
+                "3 тренировки в неделю (2 часа каждая)\n\n"
+                "/schedule - посмотри полное расписание"
+            )
+        else:
+            await message.answer(
+                "✅ Schedule set: Intermediate\n\n"
+                "20 min morning (shadow-swings)\n"
+                "20 min evening (footwork)\n"
+                "3 trainings/week (2 hours each)\n\n"
+                "/schedule - view full schedule"
+            )
 
 
 @router.message(F.voice)

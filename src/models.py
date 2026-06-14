@@ -9,6 +9,18 @@ class PhysicalInfo(BaseModel):
     two_handed_backhand: bool = False
 
 
+class TrainingSession(BaseModel):
+    """Custom training session"""
+    id: str
+    name: str
+    day_of_week: Optional[str] = None
+    time: str
+    duration_minutes: int
+    focus_areas: List[str] = []
+    session_type: str = "solo"  # solo, court_session, match
+    location: str = "court"
+
+
 class PlayerModel(BaseModel):
     user_id: int
     name: str
@@ -20,8 +32,15 @@ class PlayerModel(BaseModel):
     goals: List[str] = []
     physical_info: PhysicalInfo = PhysicalInfo()
     current_focus: str = "split-step"
+
+    # Custom training schedule
+    training_sessions: List[TrainingSession] = []
+    weekly_training_minutes: int = 0
+
+    # Legacy (for backwards compatibility)
     daily_push_time_morning: str = "07:00"  # HH:MM
     daily_push_time_evening: str = "19:00"
+
     streak: int = 0
     last_checkin: Optional[datetime] = None
     created_at: datetime
