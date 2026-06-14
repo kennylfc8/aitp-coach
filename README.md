@@ -1,28 +1,63 @@
 # AI Tennis Coach 🎾
 
-Personal AI coach in Telegram for daily tennis practice accountability. Keeps a model of your game and runs a **30–60 min/day cycle** with daily plans, drills, video recommendations, and voice feedback — all in Russian and English.
+Personal AI coach in Telegram with **custom training schedules**, detailed assessment, and personalized plans for every session. Daily accountability with voice feedback from your coach.
 
-## Features
+## Core Features
 
-✅ **Telegram Bot** — Daily coaching via messaging  
-✅ **Detailed Assessment** — 15+ question diagnostic to identify strengths/weaknesses  
-✅ **Player Model** — Persistent profile with level, strengths/weaknesses, goals, assessment results  
-✅ **AI Coach Brain** — Claude API generates personalized daily plans, analyzes check-ins  
-✅ **Voice Messages** — Qwen3-TTS for daily coaching audio (RU + EN)  
-✅ **Voice Cloning** — Coach's voice (3-5 sec sample) cloned into all messages  
-✅ **Voice Check-In** — Send voice messages → auto-transcribed via Whisper  
-✅ **Video Library** — Curated drills organized by skill and level  
-✅ **Streak Tracking** — Build accountability with daily check-in streaks  
-✅ **Smart Scheduling** — GitHub Actions cron for automatic daily messages  
-✅ **Language Auto-Detection** — Switches RU/EN based on your messages  
+### 📋 Assessment & Profile
+✅ **Detailed 15-question Assessment** — Comprehensive diagnostic of your game  
+✅ **Smart Player Model** — Level, experience, strengths, weaknesses, goals, physical info  
+✅ **Per-User Customization** — Everything tailored to YOU
+
+### 📅 Custom Training Schedule
+✅ **Your Schedule, Your Way** — Define your exact training structure:
+  - Morning sessions (20 min shadow-swings)
+  - Evening sessions (20 min drills)
+  - Court sessions (2h technique/match-play)
+  - Match play
+✅ **Pre-built Templates** — Casual/Intermediate/Serious players  
+✅ **Track Weekly Minutes** — 230-730+ min/week depending on level
+
+### 🎾 Smart Plan Generation
+✅ **Per-Session Plans** — DIFFERENT plan for each session:
+  - 20-min morning ≠ 120-min court session
+  - Shadow-swings focus ≠ match-simulation focus
+✅ **Adaptive Difficulty** — Based on level, weaknesses, session type  
+✅ **Personalized Focus** — Targets YOUR weak areas each day
+
+### 🎙️ Voice Support (Full)
+✅ **Receive Plans as Voice** — Qwen3-TTS with voice cloning  
+✅ **Coach's Voice** — Clone any voice (3-5 sec sample) for all messages  
+✅ **Send Voice Check-Ins** — Speak instead of type  
+✅ **Auto-Transcription** — Whisper API converts voice → text  
+✅ **Bilingual** — RU + EN support
+
+### 📹 Video Library
+✅ **Curated Videos** — Organized by skill, level, difficulty  
+✅ **Smart Recommendations** — Per-session video suggestions  
+✅ **Multiple Languages** — Russian & English content
+
+### 🔥 Motivation & Tracking
+✅ **Streak Tracking** — Daily accountability (🌱 → 🔥🔥🔥)  
+✅ **Daily Feedback** — Coach analyzes your check-ins  
+✅ **Language Auto-Detection** — Switches RU/EN automatically  
+✅ **Progress Monitoring** — Weekly insights
+
+### ⚙️ Automation
+✅ **GitHub Actions Scheduler** — Auto-sends plans daily  
+✅ **Morning Plans** — 7:00 AM (customizable per user)  
+✅ **Evening Reminders** — 7:00 PM (customizable per user)  
+✅ **Per-User Settings** — Each player has own times  
 
 ## Tech Stack
 
-- **Bot:** Python + aiogram
-- **LLM:** Claude API (Opus 4.8 for planning, Haiku 4.5 for analysis)
-- **TTS:** Qwen3-TTS (self-hosted or fallback placeholder)
-- **Scheduler:** GitHub Actions cron
-- **Storage:** JSON files (easy to migrate to DB later)
+- **Bot:** Python 3.11+ + aiogram 3.3
+- **LLM:** Claude API (Opus 4.8 for planning, Haiku 4.5 for quick tasks)
+- **STT:** OpenAI Whisper API (voice → text transcription)
+- **TTS:** Qwen3-TTS (self-hosted, with voice cloning support)
+- **Scheduler:** GitHub Actions cron (free, automatic)
+- **Storage:** JSON files (per-user profiles, easy to migrate to SQLite/PostgreSQL)
+- **Languages:** Russian (RU) & English (EN)
 
 ## Quick Start
 
