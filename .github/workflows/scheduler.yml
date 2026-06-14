@@ -1,0 +1,42 @@
+name: Daily Coaching Messages
+
+on:
+  schedule:
+    # Morning push (07:00 UTC)
+    - cron: '0 7 * * *'
+    # Evening reminder (19:00 UTC)
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install aiohttp
+
+      - name: Determine action (morning or evening)
+        id: action
+        run: |
+          HOUR=$(date -u +%H)
+          if [ $HOUR -eq 7 ]; then
+            echo "task=morning" >> $GITHUB_OUTPUT
+          else
+            echo "task=evening" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send messages
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scheduler.py ${{ steps.action.outputs.task }}
