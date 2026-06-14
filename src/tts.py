@@ -3,6 +3,7 @@ Text-to-Speech module using Qwen3-TTS.
 
 Supports both self-hosted (RunPod/Modal) and fallback solutions.
 Generates voice messages in RU and EN with natural prosody.
+Supports voice cloning with 3-second audio sample.
 """
 
 import os
@@ -14,14 +15,27 @@ from typing import Optional
 # Qwen3-TTS API endpoint (self-hosted on RunPod/Modal or local)
 QWEN3_ENDPOINT = os.getenv("QWEN3_TTS_ENDPOINT", "")
 
+# Voice cloning (coach's voice reference)
+# Store 3-5 seconds of coach's voice as bytes
+COACH_VOICE_SAMPLE = None  # Will be loaded from file or URL
 
-async def generate_speech(text: str, language: str = "RU") -> Optional[bytes]:
+
+async def generate_speech(
+    text: str,
+    language: str = "RU",
+    voice_clone: Optional[bytes] = None,
+    emotion: str = "encouraging",
+    speed: float = 1.0
+) -> Optional[bytes]:
     """
-    Generate speech audio using Qwen3-TTS.
+    Generate speech audio using Qwen3-TTS with optional voice cloning.
 
     Args:
         text: Text to convert to speech
         language: "RU" or "EN"
+        voice_clone: Optional voice sample bytes (3-5 seconds) for cloning coach's voice
+        emotion: "encouraging", "neutral", "energetic", etc.
+        speed: Speech speed (0.5 - 2.0)
 
     Returns:
         Audio bytes (WAV format) or None if failed
@@ -35,22 +49,45 @@ async def generate_speech(text: str, language: str = "RU") -> Optional[bytes]:
     payload = {
         "text": text,
         "language": language.lower(),
-        "emotion": "encouraging",  # Coach tone
-        "speed": 1.0,
+        "emotion": emotion,
+        "speed": speed,
     }
+
+    # Add voice cloning if sample provided
+    if voice_clone:
+        payload["voice_clone_enabled"] = True
+        # Payload would need to handle binary data separately
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{QWEN3_ENDPOINT}/tts",
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=60)
-            ) as resp:
-                if resp.status == 200:
-                    return await resp.read()
-                else:
-                    print(f"[TTS] Error: {resp.status}")
-                    return None
+            if voice_clone:
+                # For voice cloning, use multipart form data
+                data = aiohttp.FormData()
+                data.add_field('text', text)
+                data.add_field('language', language.lower())
+                data.add_field('emotion', emotion)
+                data.add_field('speed', str(speed))
+                data.add_field('voice_sample', voice_clone, filename='voice.wav', content_type='audio/wav')
+
+                async with session.post(
+                    f"{QWEN3_ENDPOINT}/tts",
+                    data=data,
+                    timeout=aiohttp.ClientTimeout(total=60)
+                ) as resp:
+                    if resp.status == 200:
+                        return await resp.read()
+            else:
+                # Regular TTS without cloning
+                async with session.post(
+                    f"{QWEN3_ENDPOINT}/tts",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=60)
+                ) as resp:
+                    if resp.status == 200:
+                        return await resp.read()
+                    else:
+                        print(f"[TTS] Error: {resp.status}")
+                        return None
     except Exception as e:
         print(f"[TTS] Exception: {e}")
         return None

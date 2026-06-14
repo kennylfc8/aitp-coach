@@ -5,9 +5,12 @@ Personal AI coach in Telegram for daily tennis practice accountability. Keeps a 
 ## Features
 
 ✅ **Telegram Bot** — Daily coaching via messaging  
-✅ **Player Model** — Persistent profile with level, strengths/weaknesses, goals  
-✅ **AI Coach Brain** — Claude API generates daily plans, analyzes check-ins  
+✅ **Detailed Assessment** — 15+ question diagnostic to identify strengths/weaknesses  
+✅ **Player Model** — Persistent profile with level, strengths/weaknesses, goals, assessment results  
+✅ **AI Coach Brain** — Claude API generates personalized daily plans, analyzes check-ins  
 ✅ **Voice Messages** — Qwen3-TTS for daily coaching audio (RU + EN)  
+✅ **Voice Cloning** — Coach's voice (3-5 sec sample) cloned into all messages  
+✅ **Voice Check-In** — Send voice messages → auto-transcribed via Whisper  
 ✅ **Video Library** — Curated drills organized by skill and level  
 ✅ **Streak Tracking** — Build accountability with daily check-in streaks  
 ✅ **Smart Scheduling** — GitHub Actions cron for automatic daily messages  

@@ -1,6 +1,7 @@
 import os
+import tempfile
 from aiogram import Router, F
-from aiogram.types import Message, User, FSInputFile
+from aiogram.types import Message, User, FSInputFile, Voice
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -17,6 +18,8 @@ from .polish import (
     detect_language_from_message,
     update_language_preference,
 )
+from .assessment import ASSESSMENT_QUESTIONS, DetailedPlayerAssessment, format_assessment_summary
+from .stt import transcribe_voice
 
 
 router = Router()
@@ -26,6 +29,8 @@ class OnboardingStates(StatesGroup):
     waiting_for_name = State()
     waiting_for_level = State()
     waiting_for_experience = State()
+    assessment_in_progress = State()
+    assessment_complete = State()
 
 
 LEVEL_BUTTONS = ["Beginner", "Intermediate", "Advanced", "Professional"]
@@ -352,6 +357,68 @@ async def cmd_videos(message: Message):
             await message.answer("К сожалению, видео не найдены.")
         else:
             await message.answer("Unfortunately, no videos found.")
+
+
+@router.message(F.voice)
+async def handle_voice_message(message: Message, state: FSMContext):
+    """Handle voice messages - transcribe and process as text."""
+    user: User = message.from_user
+    player = load_player(user.id)
+
+    if not player:
+        await message.answer("Сначала создай профиль: /start")
+        return
+
+    # Show processing indicator
+    status_msg = await message.answer("⏳ Слушаю и разбираю...")
+
+    try:
+        # Download voice file
+        voice_file = message.voice
+        file = await message.bot.get_file(voice_file.file_id)
+        voice_data = await message.bot.download_file(file.file_path)
+
+        # Transcribe voice to text
+        transcribed_text = await transcribe_voice(voice_data.read())
+
+        if not transcribed_text:
+            await message.edit_text("❌ Не понял голос. Напиши текстом: /checkin")
+            return
+
+        await message.edit_text(f"✓ Я понял: \"{transcribed_text}\"")
+
+        # Check if waiting for check-in
+        data = await state.get_data()
+        if data.get("waiting_for_checkin"):
+            # Process as check-in
+            await state.clear()
+
+            # Analyze check-in
+            feedback = analyze_checkin(player, transcribed_text)
+            update_player_model(player, transcribed_text)
+
+            # Update streak
+            new_streak, is_broken = check_and_update_streak(player)
+            player.streak = new_streak
+            save_player(player)
+
+            await message.answer(feedback)
+
+            streak_msg = format_streak_message(new_streak, is_broken, player.language)
+            await message.answer(streak_msg)
+
+            if player.language == "RU":
+                await message.answer(
+                    "Спасибо за работу! 💪\n\nВозвращайся завтра для нового плана!"
+                )
+            else:
+                await message.answer(
+                    "Thanks for the work! 💪\n\nSee you tomorrow for a new plan!"
+                )
+
+    except Exception as e:
+        print(f"Voice processing error: {e}")
+        await message.edit_text("❌ Ошибка при обработке голоса. Попробуй текстом.")
 
 
 def _make_buttons(options):
