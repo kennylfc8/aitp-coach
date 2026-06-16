@@ -1,11 +1,12 @@
 import os
 import logging
+from dotenv import load_dotenv
 from aiogram import Dispatcher, Bot
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from .bot import router
 
-
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 

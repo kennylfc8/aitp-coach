@@ -31,7 +31,7 @@ class OnboardingStates(StatesGroup):
     waiting_for_name = State()
     waiting_for_level = State()
     waiting_for_experience = State()
-    assessment_in_progress = State()
+    assessment_question = State()
     assessment_complete = State()
 
 
@@ -147,20 +147,59 @@ async def process_experience(message: Message, state: FSMContext):
         return
 
     data = await state.get_data()
+    await state.update_data(experience_years=years, assessment_answers={}, question_index=0)
+    await state.set_state(OnboardingStates.assessment_question)
+
+    await message.answer(
+        "Спасибо! 🎾\n\n"
+        "Теперь пройдём подробный опрос (10 вопросов) для персонализированного плана.\n\n"
+        "Готов начинать?"
+    )
+
+    # Ask first question
+    await ask_assessment_question(message, state)
+
+
+async def ask_assessment_question(message: Message, state: FSMContext):
+    data = await state.get_data()
+    question_index = data.get("question_index", 0)
+
+    if question_index >= len(ASSESSMENT_QUESTIONS):
+        # Assessment complete
+        await complete_assessment(message, state)
+        return
+
+    question = ASSESSMENT_QUESTIONS[question_index]
+    question_text = question.question_ru
+
+    if question.question_type == "choice":
+        options = question.options_ru or []
+        buttons_text = "\n".join([f"• {opt}" for opt in options])
+        await message.answer(f"{question_index + 1}. {question_text}\n\n{buttons_text}")
+    elif question.question_type == "multiselect":
+        options = question.options_ru or []
+        buttons_text = "\n".join([f"• {opt}" for opt in options])
+        await message.answer(f"{question_index + 1}. {question_text}\n\n{buttons_text}\n\n(Напиши номера через запятую, например: 1, 3, 5)")
+    else:
+        await message.answer(f"{question_index + 1}. {question_text}")
+
+
+async def complete_assessment(message: Message, state: FSMContext):
+    data = await state.get_data()
     user: User = message.from_user
 
     player = create_player(
         user_id=user.id,
         name=data["name"],
         level=data["level"],
-        experience_years=years
+        experience_years=data.get("experience_years", 0),
+        assessment_data=data.get("assessment_answers", {})
     )
 
     await state.clear()
     await message.answer(
-        f"✅ Профиль создан!\n\n"
-        f"Спасибо за информацию, {player.name}.\n\n"
-        f"Первый дневной план готовится... "
+        f"✅ Профиль готов!\n\n"
+        f"Спасибо, {player.name}! Генерирую твой первый план..."
     )
 
     # Generate first daily plan
@@ -540,6 +579,30 @@ async def handle_voice_message(message: Message, state: FSMContext):
     except Exception as e:
         print(f"Voice processing error: {e}")
         await message.edit_text("❌ Ошибка при обработке голоса. Попробуй текстом.")
+
+
+@router.message(OnboardingStates.assessment_question)
+async def process_assessment_answer(message: Message, state: FSMContext):
+    """Process assessment question answer and move to next."""
+    data = await state.get_data()
+    question_index = data.get("question_index", 0)
+    assessment_answers = data.get("assessment_answers", {})
+
+    if question_index >= len(ASSESSMENT_QUESTIONS):
+        await complete_assessment(message, state)
+        return
+
+    question = ASSESSMENT_QUESTIONS[question_index]
+    assessment_answers[question.id] = message.text
+
+    # Move to next question
+    question_index += 1
+    await state.update_data(question_index=question_index, assessment_answers=assessment_answers)
+
+    if question_index >= len(ASSESSMENT_QUESTIONS):
+        await complete_assessment(message, state)
+    else:
+        await ask_assessment_question(message, state)
 
 
 def _make_buttons(options):
