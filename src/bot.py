@@ -270,6 +270,30 @@ async def cmd_checkin(message: Message, state: FSMContext):
     await state.update_data(waiting_for_checkin=True)
 
 
+@router.message(OnboardingStates.assessment_question)
+async def process_assessment_answer(message: Message, state: FSMContext):
+    """Process assessment question answer and move to next."""
+    data = await state.get_data()
+    question_index = data.get("question_index", 0)
+    assessment_answers = data.get("assessment_answers", {})
+
+    if question_index >= len(ASSESSMENT_QUESTIONS):
+        await complete_assessment(message, state)
+        return
+
+    question = ASSESSMENT_QUESTIONS[question_index]
+    assessment_answers[question.id] = message.text
+
+    # Move to next question
+    question_index += 1
+    await state.update_data(question_index=question_index, assessment_answers=assessment_answers)
+
+    if question_index >= len(ASSESSMENT_QUESTIONS):
+        await complete_assessment(message, state)
+    else:
+        await ask_assessment_question(message, state)
+
+
 @router.message(F.text)
 async def handle_checkin_text(message: Message, state: FSMContext):
     user: User = message.from_user
@@ -579,30 +603,6 @@ async def handle_voice_message(message: Message, state: FSMContext):
     except Exception as e:
         print(f"Voice processing error: {e}")
         await message.edit_text("❌ Ошибка при обработке голоса. Попробуй текстом.")
-
-
-@router.message(OnboardingStates.assessment_question)
-async def process_assessment_answer(message: Message, state: FSMContext):
-    """Process assessment question answer and move to next."""
-    data = await state.get_data()
-    question_index = data.get("question_index", 0)
-    assessment_answers = data.get("assessment_answers", {})
-
-    if question_index >= len(ASSESSMENT_QUESTIONS):
-        await complete_assessment(message, state)
-        return
-
-    question = ASSESSMENT_QUESTIONS[question_index]
-    assessment_answers[question.id] = message.text
-
-    # Move to next question
-    question_index += 1
-    await state.update_data(question_index=question_index, assessment_answers=assessment_answers)
-
-    if question_index >= len(ASSESSMENT_QUESTIONS):
-        await complete_assessment(message, state)
-    else:
-        await ask_assessment_question(message, state)
 
 
 def _make_buttons(options):
