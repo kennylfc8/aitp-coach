@@ -2,6 +2,7 @@ import os
 import re
 import logging
 import tempfile
+from typing import Optional
 from datetime import date, timedelta
 from aiogram import Router, F
 from aiogram.types import (
@@ -99,6 +100,19 @@ def format_plan_message(daily_plan, player: PlayerModel) -> str:
 Let's go! 💪"""
 
     return plan_text
+
+
+async def _send_voice(message: Message, audio: Optional[bytes]):
+    """Send audio bytes as a Telegram voice note (Opus/OGG). No-op if empty."""
+    if not audio or len(audio) < 800:
+        return
+    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
+        tmp.write(audio)
+        path = tmp.name
+    try:
+        await message.answer_voice(FSInputFile(path))
+    finally:
+        os.unlink(path)
 
 
 @router.message(Command("start"))
@@ -600,23 +614,13 @@ async def cmd_plan(message: Message):
     # Send text plan with videos
     await message.answer(format_plan_message(plan, player))
 
-    # Generate and send voice (optional, non-blocking)
-    try:
-        voice_data = await generate_daily_voice_message(
-            plan.focus, plan.drill, player.language
-        )
-        if voice_data and len(voice_data) > 1000:  # Valid audio data
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-                tmp.write(voice_data)
-                tmp_path = tmp.name
-
-            try:
-                await message.answer_voice(FSInputFile(tmp_path))
-            finally:
-                os.unlink(tmp_path)
-    except Exception as e:
-        print(f"Voice generation error: {e}")
+    # Coach voice note (non-blocking; respects the /voice toggle)
+    if player.voice_enabled:
+        try:
+            audio = await generate_daily_voice_message(plan.focus, plan.drill, player.language)
+            await _send_voice(message, audio)
+        except Exception as e:
+            logger.warning(f"voice (plan) failed: {e}")
 
     # Delete status message
     await status_msg.delete()
@@ -683,8 +687,11 @@ async def on_target_weeks(message: Message, state: FSMContext):
         await message.answer("Профиль не найден: /start")
         return
 
+    current = player.utr_value or 3.0
+    feasibility = periodization.assess_goal(current, target, weeks)
+
     program = periodization.build_program(
-        current_utr=player.utr_value or 3.0,
+        current_utr=current,
         target_utr=target,
         weeks=weeks,
         weak_dims=_weak_dims_for(player),
@@ -696,8 +703,11 @@ async def on_target_weeks(message: Message, state: FSMContext):
     save_player(player)
     await state.clear()
 
+    # Warn on unrealistic / ambitious targets (but still build the program)
+    note = "" if feasibility["verdict"] == "ok" else feasibility["message"] + "\n\n"
     await message.answer(
-        f"💪 Программа собрана: UTR {program.current_utr} → {target} за {weeks} нед.!\n\n"
+        note
+        + f"💪 Программа собрана: UTR {program.current_utr} → {target} за {weeks} нед.!\n\n"
         + periodization.format_program(program, player.language)
         + "\n\n/program — посмотреть программу. /plan — план на сегодня по текущей фазе."
     )
@@ -865,8 +875,13 @@ async def handle_checkin_text(message: Message, state: FSMContext):
 
     await state.clear()
 
-    # Send feedback
+    # Send feedback (text + coach voice)
     await message.answer(feedback)
+    if player.voice_enabled:
+        try:
+            await _send_voice(message, await generate_checkin_feedback_voice(feedback, player.language))
+        except Exception as e:
+            logger.warning(f"voice (checkin) failed: {e}")
 
     # Send streak update
     streak_msg = format_streak_message(new_streak, is_broken, player.language)
@@ -942,6 +957,21 @@ async def cmd_ru(message: Message):
         player.language = "RU"
         save_player(player)
         await message.answer("Язык изменён на русский. 🇷🇺")
+
+
+@router.message(Command("voice"))
+async def cmd_voice(message: Message):
+    user: User = message.from_user
+    player = load_player(user.id)
+    if not player:
+        await message.answer("Сначала создай профиль: /start")
+        return
+    player.voice_enabled = not player.voice_enabled
+    save_player(player)
+    if player.voice_enabled:
+        await message.answer("🔊 Голос коуча включён — буду озвучивать планы и фидбэк.")
+    else:
+        await message.answer("🔇 Голос выключен — только текст. /voice — включить обратно.")
 
 
 @router.message(Command("videos"))
@@ -1124,6 +1154,11 @@ async def handle_voice_message(message: Message, state: FSMContext):
             save_player(player)
 
             await message.answer(feedback)
+            if player.voice_enabled:
+                try:
+                    await _send_voice(message, await generate_checkin_feedback_voice(feedback, player.language))
+                except Exception as e:
+                    logger.warning(f"voice (checkin) failed: {e}")
 
             streak_msg = format_streak_message(new_streak, is_broken, player.language)
             await message.answer(streak_msg)

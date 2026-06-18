@@ -13,3 +13,8 @@ venv/
 logs/
 data/players/
 data/voice_samples/
+
+# Generated audio samples
+coach_sample.*
+*.mp3
+*.ogg

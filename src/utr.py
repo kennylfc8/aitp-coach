@@ -56,6 +56,49 @@ def _clamp(v: float, lo: float = UTR_MIN, hi: float = UTR_MAX) -> float:
     return max(lo, min(hi, v))
 
 
+# --- Credibility caps: keep self-rating honest -----------------------------
+# A questionnaire can be gamed (a beginner rating everything 5 -> UTR ~16).
+# We cap the *questionnaire* estimate by objective-ish answers (years played,
+# tournament history). Logged matches are objective evidence and override caps.
+def _to_int(v) -> Optional[int]:
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return None
+
+
+def _experience_cap(years: Optional[int]) -> float:
+    """Max plausible UTR from years played alone (deliberately generous)."""
+    if years is None:
+        return UTR_MAX
+    if years < 1:
+        return 3.5
+    if years < 2:
+        return 5.0
+    if years < 4:
+        return 7.0
+    if years < 7:
+        return 9.5
+    if years < 11:
+        return 12.0
+    return UTR_MAX
+
+
+# High UTR needs real competition; without it, cap the self-estimate.
+TOURNAMENT_CAP = {
+    "none": 7.5, "local": 9.5, "regional": 11.5,
+    "national": UTR_MAX, "international": UTR_MAX,
+}
+
+
+def _credibility_cap(answers: dict) -> float:
+    caps = [_experience_cap(_to_int(answers.get("years")))]
+    tl = answers.get("tournament_level")
+    if tl in TOURNAMENT_CAP:
+        caps.append(TOURNAMENT_CAP[tl])
+    return min(caps)
+
+
 def confidence_for(tier: int, dims_answered: int, n_matches: int) -> int:
     """Confidence % from funnel depth + breadth + logged matches.
 
@@ -145,6 +188,14 @@ def estimate_utr(
     q_value = _clamp(q_value + nudge)
     if nudge:
         basis["result_nudge"] = nudge
+
+    # 1b) Credibility cap: self-rating can't exceed what experience/competition
+    # supports (a beginner can't self-rate to UTR 16). Matches override below.
+    cap = _credibility_cap(answers)
+    if q_value > cap:
+        basis["pre_cap_value"] = round(q_value, 2)
+        basis["credibility_cap"] = cap
+        q_value = cap
 
     # 2) Blend toward match-based estimate as matches accumulate.
     n_matches = len([m for m in match_results if m.get("opponent_utr") is not None])

@@ -59,6 +59,7 @@ class PlayerModel(BaseModel):
     daily_push_time_evening: str = "19:00"
 
     streak: int = 0
+    voice_enabled: bool = True   # send coach voice notes (toggle with /voice)
     last_checkin: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime

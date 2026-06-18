@@ -92,6 +92,7 @@ async def _stub_voice(*args, **kwargs):
 botmod.generate_daily_plan = _stub_plan
 botmod.analyze_checkin = _stub_checkin
 botmod.generate_daily_voice_message = _stub_voice
+botmod.generate_checkin_feedback_voice = _stub_voice
 
 
 # ---------------------------------------------------------------------------
@@ -267,6 +268,26 @@ def unit_checks(results):
     check("S: weekly minutes > 0", TS.weekly_minutes_of(sess) > 0, results)
     check("S: court focus = weak dims", courts[0]["focus_areas"] == ["serve", "backhand"], results)
 
+    # UTR credibility cap (anti-cheat on self-rating)
+    maxed = {d: 10 for d in U.DIMENSIONS}
+    cheat = U.estimate_utr({"level": "national", "years": "1"}, maxed, [], 1)
+    check("U: beginner can't self-rate to pro (cap)", cheat.value <= 5.0, results)
+    legit = U.estimate_utr({"level": "national", "years": "15"}, maxed, [], 3)
+    check("U: experienced player not capped", legit.value > 12.0, results)
+    no_tour = U.estimate_utr({"level": "open", "years": "15", "tournament_level": "none"}, maxed, [], 3)
+    check("U: no tournaments caps high UTR", no_tour.value <= 7.5, results)
+    won_big = [{"opponent_utr": 9.0, "won": True, "games_won": 12, "games_lost": 4}] * 3
+    override = U.estimate_utr({"level": "beginner", "years": "1"}, {d: 2 for d in U.DIMENSIONS}, won_big, 1)
+    check("U: matches override the cap", override.value > 5.0, results)
+
+    # Goal feasibility
+    check("P: goal ok", PER.assess_goal(5.0, 5.5, 12)["verdict"] == "ok", results)
+    check("P: goal ambitious", PER.assess_goal(5.0, 6.0, 12)["verdict"] == "ambitious", results)
+    g_un = PER.assess_goal(5.0, 9.0, 12)
+    check("P: goal unrealistic", g_un["verdict"] == "unrealistic", results)
+    check("P: unrealistic suggests lower target", g_un["suggested_target"] < 9.0, results)
+    check("P: goal below current = maintain", PER.assess_goal(6.0, 5.0, 12)["verdict"] == "maintain", results)
+
 
 async def main():
     results = []
@@ -363,11 +384,22 @@ async def main():
     check("D: program still present after retest", bool(rt and rt.program), results)
     check("D: no errors (retest)", not h.all_errors, results)
 
+    # ---- Voice toggle ----
+    print("\n##### VOICE TOGGLE #####")
+    h.reset_errors()
+    await h.send_text("/voice")
+    vp = load_player(TEST_USER_ID)
+    check("V: /voice turns voice off", vp and vp.voice_enabled is False, results)
+    await h.send_text("/voice")
+    vp = load_player(TEST_USER_ID)
+    check("V: /voice turns voice back on", vp and vp.voice_enabled is True, results)
+    check("V: no errors", not h.all_errors, results)
+
     # ---- Command coverage on the deep player ----
     print("\n##### COMMAND COVERAGE #####")
     h.reset_errors()
     silent = []
-    for cmd in ["/profile", "/plan", "/schedule", "/videos", "/en", "/ru"]:
+    for cmd in ["/profile", "/plan", "/schedule", "/videos", "/voice", "/en", "/ru"]:
         replies = await h.send_text(cmd)
         if not replies:
             silent.append(cmd)

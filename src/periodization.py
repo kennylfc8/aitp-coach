@@ -118,6 +118,35 @@ def build_program(
     )
 
 
+# Realistic UTR gain is slow: ~0.06 UTR/week is comfortable, ~0.12 aggressive.
+_RATE_OK = 0.06
+_RATE_AMBITIOUS = 0.12
+
+
+def assess_goal(current_utr: float, target_utr: float, weeks: int) -> dict:
+    """Judge whether target_utr in `weeks` is realistic. Never blocks — just advises."""
+    weeks = max(1, int(weeks))
+    delta = round(target_utr - current_utr, 2)
+    rate = delta / weeks  # UTR per week
+
+    if delta <= 0:
+        return {"verdict": "maintain", "rate": round(rate, 3), "suggested_target": target_utr,
+                "message": "🎯 Цель не выше текущего UTR — это режим поддержания и шлифовки."}
+    if rate <= _RATE_OK:
+        return {"verdict": "ok", "rate": round(rate, 3), "suggested_target": target_utr,
+                "message": "✅ Реалистичная цель при регулярных тренировках."}
+    if rate <= _RATE_AMBITIOUS:
+        return {"verdict": "ambitious", "rate": round(rate, 3), "suggested_target": target_utr,
+                "message": "🔥 Амбициозно, но достижимо при серьёзной работе и игре матчей."}
+
+    suggested = round(min(16.5, current_utr + _RATE_OK * weeks), 1)
+    weeks_needed = int(round(delta / _RATE_OK))
+    return {"verdict": "unrealistic", "rate": round(rate, 3), "suggested_target": suggested,
+            "message": (f"⚠️ +{delta} UTR за {weeks} нед. — очень агрессивно: UTR растёт медленно. "
+                        f"Реалистичнее цель ~{suggested} за этот срок, "
+                        f"либо ~{weeks_needed} нед. на твою цель. Программу всё равно собрал — просто имей в виду.")}
+
+
 def _as_program(program: Union[PeriodizedProgram, dict]) -> PeriodizedProgram:
     if isinstance(program, PeriodizedProgram):
         return program
