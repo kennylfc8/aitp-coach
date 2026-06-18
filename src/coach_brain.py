@@ -1,10 +1,15 @@
+import os
 from anthropic import Anthropic
 from .models import PlayerModel, DailyPlan
 from datetime import datetime
 import json
 
+# Get API key from environment (loaded by main.py)
+_api_key = os.getenv("ANTHROPIC_API_KEY")
+if not _api_key:
+    raise ValueError("ANTHROPIC_API_KEY not found in environment variables. Check .env file.")
 
-client = Anthropic()
+client = Anthropic(api_key=_api_key)
 
 
 SYSTEM_PROMPT_EN = """You are an expert tennis coach with 20+ years of experience. Your role:
@@ -30,8 +35,20 @@ def get_system_prompt(language: str) -> str:
     return SYSTEM_PROMPT_RU if language == "RU" else SYSTEM_PROMPT_EN
 
 
-def generate_daily_plan(player: PlayerModel) -> DailyPlan:
-    """Generate daily practice plan using Claude."""
+def generate_daily_plan(player: PlayerModel, program_context: str = "") -> DailyPlan:
+    """Generate daily practice plan using Claude.
+
+    program_context (optional): the current periodization week's focus/phase,
+    so the daily plan respects the macrocycle (e.g. base vs peak intensity).
+    """
+
+    utr_line = ""
+    if player.utr_value is not None:
+        utr_line = f"- Estimated UTR: {player.utr_value} (target: {player.target_utr or 'not set'})\n"
+
+    program_block = ""
+    if program_context:
+        program_block = f"\n\nProgram context (respect this week's phase and focus):\n{program_context}"
 
     prompt = f"""Based on the player model below, generate today's practice plan.
 
@@ -42,7 +59,7 @@ Player Model:
 - Strengths: {', '.join(player.strengths) or 'not specified'}
 - Weaknesses: {', '.join(player.weaknesses) or 'not specified'}
 - Current Focus: {player.current_focus}
-- Goals: {', '.join(player.goals) or 'not specified'}
+{utr_line}- Goals: {', '.join(player.goals) or 'not specified'}
 - Streak: {player.streak} days
 
 Generate a JSON response with:
@@ -50,7 +67,7 @@ Generate a JSON response with:
 - drill: specific drill to work on (2-3 sentences with clear steps)
 - estimated_time_minutes: 30-60 minutes
 
-Keep the language appropriate for {player.language}."""
+Keep the language appropriate for {player.language}.{program_block}"""
 
     response = client.messages.create(
         model="claude-opus-4-8",

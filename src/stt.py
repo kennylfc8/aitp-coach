@@ -8,7 +8,6 @@ import aiohttp
 import asyncio
 from typing import Optional
 
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")  # For Whisper API
 
 

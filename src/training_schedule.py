@@ -213,6 +213,107 @@ TRAINING_TEMPLATES = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Schedule builder: turn per-type weekly counts into concrete sessions.
+# Used by the onboarding "weekly schedule" step. Returns plain dicts that map
+# 1:1 onto models.TrainingSession fields.
+# ---------------------------------------------------------------------------
+SCHED_TYPES = {
+    "court": dict(emoji="🎾", title="Корт (теннис)", session_type="court_session",
+                  location="court", default_min=90, times=["18:00", "10:00"]),
+    "solo":  dict(emoji="🤸", title="Соло: шадоу-свинги / ноги", session_type="solo",
+                  location="home", default_min=20, times=["07:00", "19:00"]),
+    "gym":   dict(emoji="🏋️", title="Зал (ОФП / сила)", session_type="gym",
+                  location="gym", default_min=45, times=["08:00"]),
+    "match": dict(emoji="🆚", title="Матчи", session_type="match",
+                  location="court", default_min=90, times=["11:00"]),
+}
+SCHED_ORDER = ["court", "solo", "gym", "match"]
+
+_PREF_DAYS = {
+    "court": ["Mon", "Wed", "Fri", "Sat", "Tue", "Thu", "Sun"],
+    "solo":  ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "gym":   ["Tue", "Thu", "Sat", "Mon", "Fri", "Wed", "Sun"],
+    "match": ["Sat", "Sun", "Wed", "Fri", "Mon", "Tue", "Thu"],
+}
+DAY_LABELS_RU = {"Mon": "Пн", "Tue": "Вт", "Wed": "Ср", "Thu": "Чт",
+                 "Fri": "Пт", "Sat": "Сб", "Sun": "Вс"}
+
+
+def focus_for_category(cat: str, weak_dims=None) -> list:
+    if cat == "court":
+        return (weak_dims or ["forehand", "backhand"])[:2]
+    if cat == "solo":
+        return ["shadow-swings", "footwork"]
+    if cat == "gym":
+        return ["fitness", "strength"]
+    if cat == "match":
+        return ["match-play"]
+    return []
+
+
+def make_session_dict(cat: str, day, time, duration, weak_dims=None, name=None) -> dict:
+    meta = SCHED_TYPES[cat]
+    suffix = (day or "daily").lower()
+    return dict(
+        id=f"{cat}_{suffix}",
+        name=name or f"{meta['emoji']} {meta['title']}",
+        day_of_week=day,
+        time=time,
+        duration_minutes=int(duration),
+        focus_areas=focus_for_category(cat, weak_dims),
+        session_type=meta["session_type"],
+        location=meta["location"],
+    )
+
+
+def build_sessions_from_counts(counts: dict, weak_dims=None, durations=None) -> list:
+    """counts: {cat: n_per_week}. Returns list of session dicts with days/times assigned."""
+    durations = durations or {}
+    sessions = []
+    for cat in SCHED_ORDER:
+        n = int(counts.get(cat, 0) or 0)
+        if n <= 0:
+            continue
+        meta = SCHED_TYPES[cat]
+        dur = int(durations.get(cat, meta["default_min"]))
+        if cat == "solo" and n >= 7:
+            sessions.append(make_session_dict(cat, None, meta["times"][0], dur, weak_dims))
+            continue
+        for i, day in enumerate(_PREF_DAYS[cat][:n]):
+            t = meta["times"][i % len(meta["times"])]
+            s = make_session_dict(cat, day, t, dur, weak_dims)
+            s["id"] = f"{cat}_{day.lower()}_{i}"
+            sessions.append(s)
+    return sessions
+
+
+def _sess_attr(s, key):
+    return s.get(key) if isinstance(s, dict) else getattr(s, key)
+
+
+def weekly_minutes_of(sessions) -> int:
+    total = 0
+    for s in sessions:
+        dur = _sess_attr(s, "duration_minutes")
+        dow = _sess_attr(s, "day_of_week")
+        total += dur * (7 if not dow else 1)
+    return total
+
+
+def format_sessions_ru(sessions) -> str:
+    if not sessions:
+        return "График пуст."
+    lines = []
+    for s in sessions:
+        dow = _sess_attr(s, "day_of_week")
+        day = "каждый день" if not dow else DAY_LABELS_RU.get(dow, dow)
+        focus = _sess_attr(s, "focus_areas") or []
+        lines.append(f"• {_sess_attr(s, 'name')} — {day} {_sess_attr(s, 'time')}, "
+                     f"{_sess_attr(s, 'duration_minutes')} мин ({', '.join(focus)})")
+    return "\n".join(lines)
+
+
 def get_template(template_id: str) -> Optional[TrainingTemplate]:
     """Get training template by ID"""
     return TRAINING_TEMPLATES.get(template_id)
