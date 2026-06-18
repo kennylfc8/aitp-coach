@@ -53,6 +53,17 @@ async def main():
 
     dp.include_router(router)
 
+    @dp.update.outer_middleware()
+    async def _log_updates(handler, event, data):
+        m = getattr(event, "message", None)
+        if m is not None:
+            logging.getLogger("bot").info(
+                f"RAW message: content_type={m.content_type} text={m.text!r} from={getattr(m.from_user,'id',None)}"
+            )
+        else:
+            logging.getLogger("bot").info(f"RAW non-message update: {event.event_type}")
+        return await handler(event, data)
+
     print("Bot starting...")
     await dp.start_polling(bot)
 

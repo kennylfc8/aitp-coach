@@ -18,7 +18,7 @@ logger = logging.getLogger("bot")
 
 from .models import PlayerModel, TrainingSession
 from .storage import load_player, save_player, create_player
-from .coach_brain import generate_daily_plan, analyze_checkin, update_player_model
+from .coach_brain import generate_daily_plan, analyze_checkin, update_player_model, chat_with_coach
 from .tts import generate_daily_voice_message, generate_checkin_feedback_voice
 from .videos import recommend_videos, format_video_recommendations
 from .polish import (
@@ -115,6 +115,29 @@ async def _send_voice(message: Message, audio: Optional[bytes]):
         os.unlink(path)
 
 
+async def _coach_chat(message: Message, state: FSMContext, player: PlayerModel, text: str):
+    """Free-form chat with the coach (Claude), with short rolling history + voice reply."""
+    data = await state.get_data()
+    history = data.get("chat_history", [])
+    await message.bot.send_chat_action(message.chat.id, "typing")
+    try:
+        reply = chat_with_coach(player, text, history)
+    except Exception as e:
+        logger.warning(f"coach chat failed: {e}")
+        reply = "Чёт связь с коучем подвисла — повтори ещё раз 🎾"
+    # keep last 3 exchanges (6 messages) for continuity
+    history = (history + [{"role": "user", "content": text},
+                          {"role": "assistant", "content": reply}])[-6:]
+    await state.update_data(chat_history=history)
+
+    await message.answer(reply)
+    if player.voice_enabled:
+        try:
+            await _send_voice(message, await generate_checkin_feedback_voice(reply, player.language))
+        except Exception as e:
+            logger.warning(f"voice (chat) failed: {e}")
+
+
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
     user: User = message.from_user
@@ -204,7 +227,9 @@ async def _send_funnel_question(message: Message, state: FSMContext):
         await _finalize_funnel(message, state)
         return
 
-    header = f"{f_index + 1}/{funnel.total_questions()}. {q.text_ru}"
+    hint = ("\n\n💡 Отвечай кнопками. После каждого блока сможешь остановиться "
+            "или копнуть глубже — чем глубже, тем точнее UTR.") if f_index == 0 else ""
+    header = f"{funnel.question_label(f_index)}\n\n{q.text_ru}{hint}"
     if q.qtype in ("choice", "rating"):
         rows = [(label, f"fa:{q.id}:{value}") for value, label in q.options]
         await message.answer(header, reply_markup=_inline_kb(rows))
@@ -855,10 +880,13 @@ async def handle_checkin_text(message: Message, state: FSMContext):
     player = load_player(user.id)
 
     if not player:
+        await message.answer("Сначала создай профиль: /start")
         return
 
     data = await state.get_data()
     if not data.get("waiting_for_checkin"):
+        # No active check-in -> free-form chat with the coach
+        await _coach_chat(message, state, player, message.text)
         return
 
     # Auto-detect language from check-in text
@@ -1120,35 +1148,29 @@ async def handle_voice_message(message: Message, state: FSMContext):
         await message.answer("Сначала создай профиль: /start")
         return
 
-    # Show processing indicator
+    # Show processing indicator (this is the BOT's own message — edit this one)
     status_msg = await message.answer("⏳ Слушаю и разбираю...")
 
     try:
-        # Download voice file
+        # Download + transcribe voice
         voice_file = message.voice
         file = await message.bot.get_file(voice_file.file_id)
         voice_data = await message.bot.download_file(file.file_path)
-
-        # Transcribe voice to text
         transcribed_text = await transcribe_voice(voice_data.read())
 
         if not transcribed_text:
-            await message.edit_text("❌ Не понял голос. Напиши текстом: /checkin")
+            await status_msg.edit_text("❌ Не понял голос. Повтори или напиши текстом.")
             return
 
-        await message.edit_text(f"✓ Я понял: \"{transcribed_text}\"")
+        await status_msg.edit_text(f"🎙️ Понял: «{transcribed_text}»")
 
-        # Check if waiting for check-in
         data = await state.get_data()
         if data.get("waiting_for_checkin"):
-            # Process as check-in
+            # Process as evening check-in
             await state.clear()
-
-            # Analyze check-in
+            update_language_preference(player, transcribed_text)
             feedback = analyze_checkin(player, transcribed_text)
             update_player_model(player, transcribed_text)
-
-            # Update streak
             new_streak, is_broken = check_and_update_streak(player)
             player.streak = new_streak
             save_player(player)
@@ -1159,22 +1181,17 @@ async def handle_voice_message(message: Message, state: FSMContext):
                     await _send_voice(message, await generate_checkin_feedback_voice(feedback, player.language))
                 except Exception as e:
                     logger.warning(f"voice (checkin) failed: {e}")
-
-            streak_msg = format_streak_message(new_streak, is_broken, player.language)
-            await message.answer(streak_msg)
-
-            if player.language == "RU":
-                await message.answer(
-                    "Спасибо за работу! 💪\n\nВозвращайся завтра для нового плана!"
-                )
-            else:
-                await message.answer(
-                    "Thanks for the work! 💪\n\nSee you tomorrow for a new plan!"
-                )
+            await message.answer(format_streak_message(new_streak, is_broken, player.language))
+        else:
+            # Free-form voice chat with the coach
+            await _coach_chat(message, state, player, transcribed_text)
 
     except Exception as e:
-        print(f"Voice processing error: {e}")
-        await message.edit_text("❌ Ошибка при обработке голоса. Попробуй текстом.")
+        logger.warning(f"voice processing error: {e}")
+        try:
+            await status_msg.edit_text("❌ Ошибка при обработке голоса. Попробуй ещё раз.")
+        except Exception:
+            pass
 
 
 def _make_buttons(options):

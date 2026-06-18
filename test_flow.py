@@ -93,6 +93,7 @@ botmod.generate_daily_plan = _stub_plan
 botmod.analyze_checkin = _stub_checkin
 botmod.generate_daily_voice_message = _stub_voice
 botmod.generate_checkin_feedback_voice = _stub_voice
+botmod.chat_with_coach = lambda player, text, history=None: "Держим фокус — погнали! 🎾"
 
 
 # ---------------------------------------------------------------------------
@@ -394,6 +395,15 @@ async def main():
     vp = load_player(TEST_USER_ID)
     check("V: /voice turns voice back on", vp and vp.voice_enabled is True, results)
     check("V: no errors", not h.all_errors, results)
+
+    # ---- Free-form coach chat (text + voice route) ----
+    print("\n##### FREE CHAT #####")
+    h.reset_errors()
+    replies = await h.send_text("Коуч, как пробить кручёную подачу?")
+    check("Chat: coach replies to free text", bool(replies), results)
+    replies2 = await h.send_text("а ещё совет по настрою?")
+    check("Chat: second turn replies", bool(replies2), results)
+    check("Chat: no errors", not h.all_errors, results)
 
     # ---- Command coverage on the deep player ----
     print("\n##### COMMAND COVERAGE #####")

@@ -142,3 +142,45 @@ def update_player_model(player: PlayerModel, checkin_text: str) -> None:
 
     player.streak += 1
     player.last_checkin = datetime.now()
+
+
+COACH_CHAT_SYSTEM_RU = """Ты — личный теннис-коуч игрока, общаешься с ним в мессенджере.
+Говори живо, по-человечески, мотивирующе и КОНКРЕТНО. Коротко — 2–5 предложений, без воды.
+Помогай по технике, тактике, физподготовке, настрою, восстановлению, питанию для тенниса.
+Опирайся на контекст игрока (UTR, слабые/сильные стороны, программа). Если игрок ленится —
+подбодри по-доброму, но требовательно. Не выдумывай факты о матчах, которых не знаешь."""
+
+COACH_CHAT_SYSTEM_EN = """You are the player's personal tennis coach chatting in a messenger.
+Be lively, human, motivating and CONCRETE. Keep it short — 2–5 sentences, no fluff.
+Help with technique, tactics, fitness, mindset, recovery, tennis nutrition. Use the player's
+context (UTR, weaknesses/strengths, program). If they're slacking, push them warmly but firmly.
+Don't invent facts about matches you don't know."""
+
+
+def chat_with_coach(player: PlayerModel, user_message: str, history=None) -> str:
+    """Free-form conversational coaching, grounded in the player's profile."""
+    history = history or []
+
+    parts = [
+        f"имя {player.name}",
+        f"UTR ~{player.utr_value} (уверенность {player.utr_confidence}%)",
+        f"уровень {player.level}",
+        f"сильные: {', '.join(player.strengths) or '—'}",
+        f"слабые: {', '.join(player.weaknesses) or '—'}",
+        f"текущий фокус: {player.current_focus}",
+        f"стрик: {player.streak}",
+    ]
+    if player.target_utr:
+        parts.append(f"цель UTR {player.target_utr}")
+    context = "Контекст игрока: " + "; ".join(parts) + "."
+
+    system = (COACH_CHAT_SYSTEM_RU if player.language == "RU" else COACH_CHAT_SYSTEM_EN) + "\n\n" + context
+    messages = list(history) + [{"role": "user", "content": user_message}]
+
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=400,
+        system=system,
+        messages=messages,
+    )
+    return response.content[0].text

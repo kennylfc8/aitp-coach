@@ -143,6 +143,7 @@ FUNNEL_QUESTIONS: List[FunnelQuestion] = [
 
 MAX_TIER = 3
 TIER_NAMES = {0: "Быстрая", 1: "Стандарт", 2: "Глубокая", 3: "Полная"}
+TIER_EMOJI = {0: "⚡", 1: "📊", 2: "🔬", 3: "🧬"}
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +220,25 @@ def projected_confidence(next_tier: int) -> int:
     starts = tier_start_indices()
     upto = starts.get(next_tier + 1, total_questions())
     return confidence_for(next_tier, _dims_for_indices(upto), 0)
+
+
+def question_label(index: int) -> str:
+    """Friendly header for a question: block X/4 + position within the small block.
+
+    Avoids the scary global 'N/36' — the funnel is opt-in per block, so we show
+    progress inside the current (small) block and how many blocks exist total.
+    """
+    q = get_question(index)
+    if not q:
+        return ""
+    starts = tier_start_indices()
+    start = starts.get(q.tier, 0)
+    nxt = starts.get(q.tier + 1, total_questions())
+    size = nxt - start
+    pos = index - start + 1
+    blocks = MAX_TIER + 1
+    return (f"{TIER_EMOJI.get(q.tier, '')} Блок {q.tier + 1}/{blocks} "
+            f"«{TIER_NAMES.get(q.tier, '')}» · вопрос {pos}/{size}")
 
 
 def progress_line(current_conf: int, next_tier: int) -> str:

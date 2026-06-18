@@ -89,6 +89,7 @@ botmod.generate_daily_plan = _stub_plan
 botmod.analyze_checkin = _stub_checkin
 botmod.generate_daily_voice_message = _stub_voice
 botmod.generate_checkin_feedback_voice = _stub_voice
+botmod.chat_with_coach = lambda player, text, history=None: "Держим фокус — погнали! 🎾"
 
 
 # --- Harness with transcript ------------------------------------------------
