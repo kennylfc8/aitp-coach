@@ -20,7 +20,7 @@ from .models import PlayerModel, TrainingSession
 from .storage import load_player, save_player, create_player
 from .coach_brain import generate_daily_plan, analyze_checkin, update_player_model, chat_with_coach
 from .tts import generate_daily_voice_message, generate_checkin_feedback_voice
-from .videos import recommend_videos, format_video_recommendations
+from . import youtube
 from .polish import (
     check_and_update_streak,
     format_streak_message,
@@ -67,13 +67,6 @@ def get_user_language(user_data: dict) -> str:
 
 def format_plan_message(daily_plan, player: PlayerModel) -> str:
     language = player.language
-    focus_keywords = [player.current_focus]
-    if player.weaknesses:
-        focus_keywords.extend(player.weaknesses[:2])
-
-    videos = recommend_videos(focus_keywords, language, player.level, limit=2)
-    video_text = format_video_recommendations(videos, language) if videos else ""
-
     if language == "RU":
         plan_text = f"""🎾 **План на сегодня**
 
@@ -84,8 +77,7 @@ def format_plan_message(daily_plan, player: PlayerModel) -> str:
 
 ⏱️ **Время:** {daily_plan.estimated_time_minutes} минут
 
-{video_text}
-Вперёд! 💪"""
+Вперёд! 💪 (видео по теме — /videos)"""
     else:
         plan_text = f"""🎾 **Today's Plan**
 
@@ -96,8 +88,7 @@ def format_plan_message(daily_plan, player: PlayerModel) -> str:
 
 ⏱️ **Time:** {daily_plan.estimated_time_minutes} minutes
 
-{video_text}
-Let's go! 💪"""
+Let's go! 💪 (topic videos — /videos)"""
 
     return plan_text
 
@@ -115,11 +106,27 @@ async def _send_voice(message: Message, audio: Optional[bytes]):
         os.unlink(path)
 
 
-async def _coach_chat(message: Message, state: FSMContext, player: PlayerModel, text: str):
-    """Free-form chat with the coach (Claude), with short rolling history + voice reply."""
+async def _reply(message: Message, player: PlayerModel, text_reply: str, voice_reply: bool):
+    """Mirror the input modality: voice in -> voice note (fallback to text); text -> text."""
+    if voice_reply:
+        audio = None
+        try:
+            audio = await generate_checkin_feedback_voice(text_reply, player.language)
+        except Exception as e:
+            logger.warning(f"tts reply failed: {e}")
+        if audio and len(audio) >= 800:
+            await _send_voice(message, audio)
+            return
+        # TTS unavailable -> fall back to text so the user isn't left in silence
+    await message.answer(text_reply)
+
+
+async def _coach_chat(message: Message, state: FSMContext, player: PlayerModel,
+                      text: str, voice_reply: bool):
+    """Free-form chat with the coach (Claude), short rolling history, mirrored modality."""
     data = await state.get_data()
     history = data.get("chat_history", [])
-    await message.bot.send_chat_action(message.chat.id, "typing")
+    await message.bot.send_chat_action(message.chat.id, "record_voice" if voice_reply else "typing")
     try:
         reply = chat_with_coach(player, text, history)
     except Exception as e:
@@ -129,13 +136,24 @@ async def _coach_chat(message: Message, state: FSMContext, player: PlayerModel, 
     history = (history + [{"role": "user", "content": text},
                           {"role": "assistant", "content": reply}])[-6:]
     await state.update_data(chat_history=history)
+    await _reply(message, player, reply, voice_reply)
 
-    await message.answer(reply)
-    if player.voice_enabled:
-        try:
-            await _send_voice(message, await generate_checkin_feedback_voice(reply, player.language))
-        except Exception as e:
-            logger.warning(f"voice (chat) failed: {e}")
+
+async def _process_checkin(message: Message, state: FSMContext, player: PlayerModel,
+                           text: str, voice_reply: bool):
+    """Evening check-in: analyze + update streak. Output mirrors input modality."""
+    update_language_preference(player, text)
+    feedback = analyze_checkin(player, text)
+    update_player_model(player, text)
+    new_streak, is_broken = check_and_update_streak(player)
+    player.streak = new_streak
+    save_player(player)
+    await state.update_data(waiting_for_checkin=False)
+
+    await _reply(message, player, feedback, voice_reply)
+    # streak line only in text mode (keep voice replies clean = voice only)
+    if not voice_reply:
+        await message.answer(format_streak_message(new_streak, is_broken, player.language))
 
 
 @router.message(Command("start"))
@@ -639,15 +657,7 @@ async def cmd_plan(message: Message):
     # Send text plan with videos
     await message.answer(format_plan_message(plan, player))
 
-    # Coach voice note (non-blocking; respects the /voice toggle)
-    if player.voice_enabled:
-        try:
-            audio = await generate_daily_voice_message(plan.focus, plan.drill, player.language)
-            await _send_voice(message, audio)
-        except Exception as e:
-            logger.warning(f"voice (plan) failed: {e}")
-
-    # Delete status message
+    # Delete status message ("⏳") — /plan is a typed command, so text-only reply
     await status_msg.delete()
 
 
@@ -884,48 +894,11 @@ async def handle_checkin_text(message: Message, state: FSMContext):
         return
 
     data = await state.get_data()
-    if not data.get("waiting_for_checkin"):
-        # No active check-in -> free-form chat with the coach
-        await _coach_chat(message, state, player, message.text)
-        return
-
-    # Auto-detect language from check-in text
-    update_language_preference(player, message.text)
-
-    # Analyze check-in
-    feedback = analyze_checkin(player, message.text)
-    update_player_model(player, message.text)
-
-    # Update streak
-    new_streak, is_broken = check_and_update_streak(player)
-    player.streak = new_streak
-    save_player(player)
-
-    await state.clear()
-
-    # Send feedback (text + coach voice)
-    await message.answer(feedback)
-    if player.voice_enabled:
-        try:
-            await _send_voice(message, await generate_checkin_feedback_voice(feedback, player.language))
-        except Exception as e:
-            logger.warning(f"voice (checkin) failed: {e}")
-
-    # Send streak update
-    streak_msg = format_streak_message(new_streak, is_broken, player.language)
-    await message.answer(streak_msg)
-
-    # Send encouragement
-    if player.language == "RU":
-        await message.answer(
-            "Спасибо за работу! 💪\n\n"
-            "Возвращайся завтра для нового плана!"
-        )
+    if data.get("waiting_for_checkin"):
+        await _process_checkin(message, state, player, message.text, voice_reply=False)
     else:
-        await message.answer(
-            "Thanks for the work! 💪\n\n"
-            "See you tomorrow for a new plan!"
-        )
+        # No active check-in -> free-form chat with the coach (text in, text out)
+        await _coach_chat(message, state, player, message.text, voice_reply=False)
 
 
 @router.message(Command("profile"))
@@ -1011,20 +984,26 @@ async def cmd_videos(message: Message):
         await message.answer("Сначала создай профиль: /start")
         return
 
-    focus_keywords = [player.current_focus]
-    if player.weaknesses:
-        focus_keywords.extend(player.weaknesses[:2])
+    focus = [player.current_focus] + (player.weaknesses[:2] if player.weaknesses else [])
+    await message.bot.send_chat_action(message.chat.id, "typing")
 
-    videos = recommend_videos(focus_keywords, player.language, player.level, limit=5)
+    try:
+        vids = await youtube.recommend(focus, player.language, player.level, limit=5)
+    except Exception as e:
+        logger.warning(f"youtube recommend failed: {e}")
+        vids = None
 
-    if videos:
-        msg = format_video_recommendations(videos, player.language)
-        await message.answer(msg)
+    if vids:
+        await message.answer(youtube.format_videos(vids, player.language))
     else:
-        if player.language == "RU":
-            await message.answer("К сожалению, видео не найдены.")
-        else:
-            await message.answer("Unfortunately, no videos found.")
+        # No API key (or error) -> always-valid trusted-channel search links
+        note = ("🔎 Живой YouTube-поиск выключен (добавь YOUTUBE_API_KEY). "
+                "Пока — подборки по теме на проверенных каналах:"
+                if player.language == "RU" else
+                "🔎 Live YouTube search is off (add YOUTUBE_API_KEY). "
+                "Meanwhile — topic searches on trusted channels:")
+        links = youtube.fallback_links(focus, player.language, limit=4)
+        await message.answer(note + "\n\n" + youtube.format_videos(links, player.language))
 
 
 @router.message(Command("schedule"))
@@ -1148,50 +1127,29 @@ async def handle_voice_message(message: Message, state: FSMContext):
         await message.answer("Сначала создай профиль: /start")
         return
 
-    # Show processing indicator (this is the BOT's own message — edit this one)
-    status_msg = await message.answer("⏳ Слушаю и разбираю...")
-
     try:
-        # Download + transcribe voice
-        voice_file = message.voice
-        file = await message.bot.get_file(voice_file.file_id)
-        voice_data = await message.bot.download_file(file.file_path)
-        transcribed_text = await transcribe_voice(voice_data.read())
+        # "recording voice…" indicator (transient, no message clutter)
+        await message.bot.send_chat_action(message.chat.id, "record_voice")
 
-        if not transcribed_text:
-            await status_msg.edit_text("❌ Не понял голос. Повтори или напиши текстом.")
+        file = await message.bot.get_file(message.voice.file_id)
+        voice_data = await message.bot.download_file(file.file_path)
+        text = await transcribe_voice(voice_data.read())
+
+        if not text:
+            await message.answer("❌ Не разобрал голос, повтори?")
             return
 
-        await status_msg.edit_text(f"🎙️ Понял: «{transcribed_text}»")
-
+        # Voice in -> voice out (unless the user turned voice off with /voice)
+        voice_reply = player.voice_enabled
         data = await state.get_data()
         if data.get("waiting_for_checkin"):
-            # Process as evening check-in
-            await state.clear()
-            update_language_preference(player, transcribed_text)
-            feedback = analyze_checkin(player, transcribed_text)
-            update_player_model(player, transcribed_text)
-            new_streak, is_broken = check_and_update_streak(player)
-            player.streak = new_streak
-            save_player(player)
-
-            await message.answer(feedback)
-            if player.voice_enabled:
-                try:
-                    await _send_voice(message, await generate_checkin_feedback_voice(feedback, player.language))
-                except Exception as e:
-                    logger.warning(f"voice (checkin) failed: {e}")
-            await message.answer(format_streak_message(new_streak, is_broken, player.language))
+            await _process_checkin(message, state, player, text, voice_reply=voice_reply)
         else:
-            # Free-form voice chat with the coach
-            await _coach_chat(message, state, player, transcribed_text)
+            await _coach_chat(message, state, player, text, voice_reply=voice_reply)
 
     except Exception as e:
         logger.warning(f"voice processing error: {e}")
-        try:
-            await status_msg.edit_text("❌ Ошибка при обработке голоса. Попробуй ещё раз.")
-        except Exception:
-            pass
+        await message.answer("❌ Ошибка с голосом, попробуй ещё раз.")
 
 
 def _make_buttons(options):
