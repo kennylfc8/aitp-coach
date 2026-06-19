@@ -14,7 +14,9 @@ logs/
 data/players/
 data/voice_samples/
 
-# Generated audio samples
+# Generated audio samples (throwaway TTS output at repo root)
 coach_sample.*
 *.mp3
 *.ogg
+# ...but the web demo's test audio IS part of the app — keep it
+!web/public/coach_test.mp3
