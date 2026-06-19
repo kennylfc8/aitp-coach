@@ -94,14 +94,19 @@ Let's go! 💪 (topic videos — /videos)"""
 
 
 async def _send_voice(message: Message, audio: Optional[bytes]):
-    """Send audio bytes as a Telegram voice note (Opus/OGG). No-op if empty."""
+    """OGG/Opus -> Telegram voice note; mp3 (e.g. MiniMax) -> audio message. No-op if empty."""
     if not audio or len(audio) < 800:
         return
-    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
+    is_ogg = audio[:4] == b"OggS"
+    suffix = ".ogg" if is_ogg else ".mp3"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(audio)
         path = tmp.name
     try:
-        await message.answer_voice(FSInputFile(path))
+        if is_ogg:
+            await message.answer_voice(FSInputFile(path))
+        else:
+            await message.answer_audio(FSInputFile(path), title="Coach")
     finally:
         os.unlink(path)
 
