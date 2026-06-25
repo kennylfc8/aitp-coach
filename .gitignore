@@ -25,3 +25,7 @@ coach_sample.*
 # Debug / tooling artifacts
 web_debug.log
 .playwright-mcp/
+
+# Downloaded test video clips (large, throwaway)
+samples/
+*.mp4

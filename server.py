@@ -25,7 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from src.models import PlayerModel
-from src.coach_brain import chat_with_coach
+from src.coach_brain import chat_with_coach, analyze_technique
 from src.tts import generate_speech
 from src.dashboard import build_dashboard
 
@@ -73,6 +73,12 @@ class LogIn(BaseModel):
     data: dict = {}
 
 
+class TechniqueIn(BaseModel):
+    stroke: str = "forehand"
+    hand: str = "right"
+    metrics: dict = {}
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -110,6 +116,13 @@ def web_log(body: LogIn):
 def player():
     """Real dashboard data (UTR, today's plan, weak zones, progress bars). Deterministic, no LLM."""
     return build_dashboard(demo_player())
+
+
+@app.post("/analyze-technique")
+def analyze_technique_ep(body: TechniqueIn):
+    """Biomechanics metrics (from the in-browser skeleton) -> coach's technique breakdown (Claude)."""
+    text = analyze_technique(body.metrics, body.stroke, body.hand, demo_player().language)
+    return {"analysis": text}
 
 
 @app.post("/chat")

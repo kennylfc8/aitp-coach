@@ -79,9 +79,12 @@ See [`docs/TESTING.md`](docs/TESTING.md) — living checklist. Top item: the **w
 confirmed in-browser by the user**.
 
 ### Backlog / future ideas
-- **3D technique analysis** (upload stroke video → mocap → compare vs ideal ATP + biomechanics): see
-  [`docs/3d-technique-analysis.md`](docs/3d-technique-analysis.md). Has the spec, risks, the 240 fps
-  recording requirement, and a 1-hour feasibility test (DeepMotion/Rokoko) to run before building.
+- **3D technique analysis** — Level A (in-browser 3D skeleton) + Level B 1–3 (biomechanics metrics
+  + Claude breakdown) **BUILT**; see [`docs/3d-technique-analysis.md`](docs/3d-technique-analysis.md).
+  - **TODO: free smooth mannequin** — retarget the existing 33 MediaPipe joints onto a rigged
+    humanoid GLB in R3F (drive bone rotations). **$0, no paid mocap.** Paid services (DeepMotion/
+    Rokoko/Move.ai) are cosmetic-only → try free retargeting first. Needs a free rigged GLB.
+  - Later: racquet tracking; optionally voice the technique verdict with the cloned coach voice.
 - **Russian voice** — current TTS is **Replicate + Chatterbox with a cloned voice (forClone.mp3)**;
   works great in **English** (product is English-first for now). Russian **word stress is wrong**
   (Chatterbox isn't RU-native; clone from an EN sample worsens it). Fix to try: auto-stress the RU

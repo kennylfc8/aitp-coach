@@ -216,3 +216,53 @@ def chat_with_coach(player: PlayerModel, user_message: str, history=None, brief:
         messages=messages,
     )
     return response.content[0].text
+
+
+STROKE_LABELS = {"serve": "подача / serve", "forehand": "форхенд / forehand",
+                 "backhand": "бэкхенд / backhand"}
+
+
+def analyze_technique(metrics: dict, stroke: str = "forehand", hand: str = "right",
+                      language: str = "EN") -> str:
+    """Turn skeleton biomechanics metrics into a coach's technique breakdown.
+
+    Metrics come from single-camera in-browser pose estimation → APPROXIMATE. The prompt
+    tells the model not to treat the exact numbers as gold, and to coach on the big picture.
+    """
+    persona = COACH_CHAT_SYSTEM_RU if language == "RU" else COACH_CHAT_SYSTEM_EN
+    metric_lines = "\n".join(f"- {k}: {v}" for k, v in (metrics or {}).items())
+    stroke_label = STROKE_LABELS.get(stroke, stroke)
+
+    if language == "RU":
+        task = (
+            f"Это разбор техники игрока. Удар: {stroke_label}. Бьющая рука: "
+            f"{'правая' if hand == 'right' else 'левая'}.\n\n"
+            f"Биомеханика (приблизительно, одна камера + monocular 3D — НЕ относись к точным "
+            f"числам как к истине, читай общую картину):\n{metric_lines}\n\n"
+            "Дай разбор по делу:\n"
+            "1) Что по цифрам выглядит ок;\n"
+            "2) Что вероятно проседает против хорошей техники (поворот корпуса, разделение "
+            "плечи-бёдра, точка контакта, загрузка ног, цепочка);\n"
+            "3) 2–3 КОНКРЕТНЫЕ правки/упражнения.\n"
+            "Коротко, по-тренерски, с огоньком. Без воды и без дисклеймеров про камеру."
+        )
+    else:
+        task = (
+            f"Technique breakdown. Stroke: {stroke_label}. Hitting hand: {hand}.\n\n"
+            f"Biomechanics (approximate — single camera + monocular 3D, do NOT treat exact "
+            f"numbers as gospel, read the big picture):\n{metric_lines}\n\n"
+            "Give a tight breakdown:\n"
+            "1) What looks OK;\n"
+            "2) What likely lags vs solid technique (torso turn, shoulder-hip separation, "
+            "contact point, leg load, kinetic chain);\n"
+            "3) 2–3 CONCRETE fixes/drills.\n"
+            "Short, coachy, with fire. No fluff, no camera disclaimers."
+        )
+
+    response = client.messages.create(
+        model="claude-opus-4-8",
+        max_tokens=600,
+        system=persona,
+        messages=[{"role": "user", "content": task}],
+    )
+    return response.content[0].text

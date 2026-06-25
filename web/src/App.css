@@ -85,6 +85,36 @@
 }
 .tech-progress > div { height: 100%; background: linear-gradient(90deg, #c8ff00, #7bd400); transition: width .15s; }
 
+/* technique: 3D stage + analysis panel */
+.tech-body { flex: 1; display: flex; min-height: 0; }
+.tech-panel {
+  width: 340px; flex-shrink: 0; overflow-y: auto;
+  border-left: 1px solid #20262e; padding: 14px; background: #11161d;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.tech-selectors { display: flex; gap: 8px; }
+.tech-selectors select {
+  flex: 1; height: 38px; border-radius: 10px; border: 1px solid #20262e;
+  background: #0e131a; color: #e8eaed; padding: 0 8px; cursor: pointer;
+}
+.tech-analyze {
+  height: 44px; border-radius: 10px; border: none; background: #c8ff00;
+  color: #0e1116; font-weight: 800; font-size: 14px; cursor: pointer;
+}
+.tech-analyze:disabled { opacity: .6; cursor: default; }
+.tech-metrics { display: flex; flex-direction: column; gap: 6px; }
+.tech-metric {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: baseline;
+  padding: 8px 10px; background: #0e131a; border: 1px solid #20262e; border-radius: 10px;
+}
+.tech-metric .mk { font-size: 13px; color: #cfd6df; }
+.tech-metric .mv { font-size: 15px; font-weight: 800; color: #c8ff00; }
+.tech-metric .mh { grid-column: 1 / -1; font-size: 11px; color: #6b7682; }
+.tech-analysis {
+  font-size: 13.5px; line-height: 1.55; color: #e8eaed; white-space: pre-wrap;
+  background: #0e131a; border: 1px solid #20262e; border-radius: 10px; padding: 12px;
+}
+
 .tech-bar {
   height: 64px; display: flex; gap: 10px; align-items: center;
   padding: 0 14px; border-top: 1px solid #20262e; background: #11161d;
@@ -108,4 +138,6 @@
 @media (max-width: 720px) {
   .main { flex-direction: column; }
   .panel { width: 100%; border-left: none; border-top: 1px solid #20262e; max-height: 40%; }
+  .tech-body { flex-direction: column; }
+  .tech-panel { width: 100%; border-left: none; border-top: 1px solid #20262e; max-height: 45%; }
 }

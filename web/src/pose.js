@@ -4,8 +4,10 @@ import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 
 // Pin WASM to the installed JS version (0.10.35) to avoid JS<->WASM mismatch.
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
+// heavy = max accuracy (recovers fast/extended limbs the "full" model drops at contact).
+// Tradeoff: ~30MB model (vs ~9MB) → slower first load + heavier per-frame. Worth it for quality.
 const MODEL =
-  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task";
+  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task";
 
 // Bone list (index pairs) for drawing the skeleton — static on the class.
 export const POSE_CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS;

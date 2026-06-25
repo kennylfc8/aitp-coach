@@ -55,7 +55,11 @@ the bot must be unaffected.
 - [ ] Judge quality: is hip/shoulder rotation + contact timing readable? Jitter level? (This decides
   whether Level B paid mocap is needed — see `docs/3d-technique-analysis.md`.)
 - [ ] Try a bad clip (30fps / front-on) to confirm the error hint shows.
+- [ ] **Level B**: pick hand+stroke → "🧠 Разобрать технику" → metrics panel fills (shoulder/hip
+  turn, X-factor, elbow, knee, contact) + Claude verdict appears (~10–15s, Opus) + 3D parks on the
+  detected contact frame. Sanity-check the numbers against what the skeleton visibly does.
 - ⚠️ First open downloads the model (~10 MB) + WASM from CDN → needs internet, first run slower.
+- ⚠️ Analysis metrics are approximate (monocular). Decide later if Level B (4–5) paid mocap is worth it.
 
 ---
 
@@ -72,6 +76,18 @@ the bot must be unaffected.
 - **Dashboard (Step 5)** — `/player` returns real deterministic data; the web right-panel
   renders it correctly (UTR 6.7→7.5 · 12 нед · 🔥14, plan from weak zones, weak tags, bars).
   Confirmed in-browser via Playwright, 0 console errors.
+- **Video → 3D skeleton (Level A pose pipeline)** — validated HEADLESS (no browser window) via
+  Python MediaPipe Tasks, SAME `pose_landmarker_full` 0.10.35 model as the web, on a real iPhone
+  slow-mo serve (`samples/tennis_sample.mp4`, 1080p/30fps/20s): **100% frame coverage, 0.94 avg
+  visibility**; skeleton overlays the body accurately at windup + contact. So the web "Техника 3D"
+  tab will produce equally good skeletons. (Browser UI render still unverified due to no-window
+  constraint, but the hard part — pose extraction — is proven. Repro: `_pose_test.py`.)
+
+## 🔧 TODO surfaced by testing
+- **Metrics windowing/unwrap** — on a 20s multi-action clip, `metrics.js` reported shoulder/hip
+  "turn" = 360° (angle wraps via atan2 + whole-serve motion + monocular z-noise). Real uploads are
+  ONE short stroke so it's usually fine, but make metrics robust: window around the contact frame
+  and unwrap angles before taking the range.
 
 ## ✅ Verified at API level (this session)
 - `/chat` returns a short coach reply (brief mode) — ~2.5s.
