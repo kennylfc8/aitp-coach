@@ -9,6 +9,15 @@ Output defaults to Opus/OGG, which is exactly what Telegram voice notes want.
 """
 
 import os
+import io
+import re
+import sys
+import wave
+import array
+import struct
+import asyncio
+import base64
+import mimetypes
 import aiohttp
 from typing import Optional
 
@@ -143,6 +152,203 @@ async def _elevenlabs_tts(text: str, language: str) -> Optional[bytes]:
         return None
 
 
+def _replicate_reference() -> Optional[str]:
+    """Reference audio for voice cloning: a public URL or a local file -> data URI."""
+    url = os.getenv("REPLICATE_VOICE_URL")
+    if url:
+        return url
+    path = os.getenv("REPLICATE_VOICE_SAMPLE")
+    if path and os.path.exists(path):
+        mime = mimetypes.guess_type(path)[0] or "audio/wav"
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        return f"data:{mime};base64,{b64}"
+    return None
+
+
+async def _replicate_poll(session, get_url, headers, tries=150):
+    for _ in range(tries):
+        async with session.get(get_url, headers=headers) as r:
+            d = await r.json()
+            st = d.get("status")
+            if st == "succeeded":
+                return d.get("output")
+            if st in ("failed", "canceled"):
+                print(f"[TTS] Replicate prediction {st}: {d.get('error')}")
+                return None
+        await asyncio.sleep(1)
+    return None
+
+
+_REPLICATE_VERSION = None
+
+
+async def _replicate_version(session, headers) -> Optional[str]:
+    """Resolve the model's version id (env override, else fetch latest, cached)."""
+    global _REPLICATE_VERSION
+    if _REPLICATE_VERSION:
+        return _REPLICATE_VERSION
+    env = os.getenv("REPLICATE_MODEL_VERSION")
+    if env:
+        _REPLICATE_VERSION = env
+        return env
+    slug = os.getenv("REPLICATE_MODEL", "resemble-ai/chatterbox-multilingual")
+    async with session.get(f"https://api.replicate.com/v1/models/{slug}", headers=headers) as r:
+        if r.status == 200:
+            _REPLICATE_VERSION = ((await r.json()).get("latest_version") or {}).get("id")
+            return _REPLICATE_VERSION
+    return None
+
+
+def _chunk_text(text: str, limit: int = 300) -> list:
+    """Split into <=limit-char chunks at sentence boundaries (Chatterbox caps at 300)."""
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return [text]
+    chunks, cur = [], ""
+    for part in re.split(r"(?<=[.!?…])\s+", text):
+        if len(part) > limit:
+            if cur:
+                chunks.append(cur); cur = ""
+            for i in range(0, len(part), limit):
+                chunks.append(part[i:i + limit])
+            continue
+        if len(cur) + len(part) + 1 <= limit:
+            cur = (cur + " " + part).strip()
+        else:
+            if cur:
+                chunks.append(cur)
+            cur = part
+    if cur:
+        chunks.append(cur)
+    return chunks or [text[:limit]]
+
+
+def _wav_float_to_int16(raw: bytes) -> bytes:
+    """Chatterbox returns 32-bit float WAV (fmt=3). Browsers' Web Audio path mangles
+    float WAV ('хрюканье') and Python's `wave` can't read it to concat. Convert to
+    16-bit PCM (fmt=1) — fixes browser playback AND enables chunk concat."""
+    try:
+        if raw[:4] != b"RIFF" or raw[8:12] != b"WAVE":
+            return raw
+        pos, afmt, ch, sr, bits, data = 12, 1, 1, 24000, 16, None
+        while pos + 8 <= len(raw):
+            cid = raw[pos:pos + 4]
+            csz = struct.unpack("<I", raw[pos + 4:pos + 8])[0]
+            body = raw[pos + 8:pos + 8 + csz]
+            if cid == b"fmt ":
+                afmt, ch, sr = struct.unpack("<HHI", body[:8])
+                bits = struct.unpack("<H", body[14:16])[0]
+            elif cid == b"data":
+                data = body
+            pos += 8 + csz + (csz & 1)  # chunks are word-aligned
+        if data is None or not (afmt == 3 and bits == 32):
+            return raw  # already int PCM (or unexpected) → leave alone
+        floats = array.array("f")
+        floats.frombytes(data[:len(data) // 4 * 4])
+        if sys.byteorder == "big":
+            floats.byteswap()
+        ints = array.array(
+            "h",
+            (32767 if s > 1 else -32768 if s < -1 else int(s * 32767) for s in floats),
+        )
+        if sys.byteorder == "big":
+            ints.byteswap()
+        out = io.BytesIO()
+        w = wave.open(out, "wb")
+        w.setnchannels(ch)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(ints.tobytes())
+        w.close()
+        return out.getvalue()
+    except Exception as e:
+        print(f"[TTS] float->int16 convert failed: {e}")
+        return raw
+
+
+def _concat_wav(parts: list) -> bytes:
+    """Concatenate same-format WAV blobs into one WAV."""
+    if len(parts) == 1:
+        return parts[0]
+    out = io.BytesIO()
+    writer = None
+    for b in parts:
+        rd = wave.open(io.BytesIO(b), "rb")
+        if writer is None:
+            writer = wave.open(out, "wb")
+            writer.setnchannels(rd.getnchannels())
+            writer.setsampwidth(rd.getsampwidth())
+            writer.setframerate(rd.getframerate())
+        writer.writeframes(rd.readframes(rd.getnframes()))
+        rd.close()
+    writer.close()
+    return out.getvalue()
+
+
+async def _replicate_one(session, version, headers, text, language, ref) -> Optional[bytes]:
+    inp = {
+        "text": text[:300],
+        "language": "ru" if language == "RU" else "en",
+        "exaggeration": float(os.getenv("REPLICATE_EXAGGERATION", "0.6")),
+        "cfg_weight": float(os.getenv("REPLICATE_CFG", "0.5")),
+    }
+    if ref:
+        inp["reference_audio"] = ref
+    async with session.post("https://api.replicate.com/v1/predictions",
+                            json={"version": version, "input": inp}, headers=headers,
+                            timeout=aiohttp.ClientTimeout(total=120)) as r:
+        if r.status not in (200, 201, 202):
+            print(f"[TTS] Replicate error {r.status}: {(await r.text())[:200]}")
+            return None
+        data = await r.json()
+    out = data.get("output")
+    if not out and data.get("urls", {}).get("get"):
+        out = await _replicate_poll(session, data["urls"]["get"], headers)
+    if not out:
+        print(f"[TTS] Replicate: no output: {str(data)[:200]}")
+        return None
+    audio_url = out[0] if isinstance(out, list) else out
+    async with session.get(audio_url, timeout=aiohttp.ClientTimeout(total=60)) as ar:
+        if ar.status != 200:
+            return None
+        return _wav_float_to_int16(await ar.read())
+
+
+async def _replicate_tts(text: str, language: str) -> Optional[bytes]:
+    """Replicate + chatterbox-multilingual: human, cloned voice. Chunks >300-char text and concatenates."""
+    token = os.getenv("REPLICATE_API_TOKEN", "")
+    if not token:
+        return None
+    ref = _replicate_reference()
+    chunks = _chunk_text(text, 300)
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json", "Prefer": "wait"}
+    try:
+        async with aiohttp.ClientSession() as session:
+            version = await _replicate_version(session, headers)
+            if not version:
+                print("[TTS] Replicate: could not resolve model version")
+                return None
+            # Sequential (NOT parallel): Replicate throttles to "burst 1" when the account
+            # has < $5 credit, so concurrent chunk predictions get 429'd → fallback to OpenAI.
+            # Brief replies are usually 1 chunk anyway, so this costs us almost nothing.
+            audios = []
+            for ch in chunks:
+                a = await _replicate_one(session, version, headers, ch, language, ref)
+                if a:
+                    audios.append(a)
+            if not audios:
+                return None
+            try:
+                return _concat_wav(audios)
+            except Exception as e:
+                print(f"[TTS] Replicate concat failed ({e}); returning first chunk")
+                return audios[0]
+    except Exception as e:
+        print(f"[TTS] Replicate exception: {e}")
+        return None
+
+
 async def _qwen_tts(
     text: str, language: str, voice_clone: Optional[bytes], emotion: str, speed: float
 ) -> Optional[bytes]:
@@ -189,7 +395,12 @@ async def generate_speech(
         audio = await _elevenlabs_tts(text, language)
         if audio:
             return audio
-        # ElevenLabs failed (e.g. quota) -> fall through to OpenAI
+        # ElevenLabs failed (e.g. quota) -> fall through
+    if os.getenv("REPLICATE_API_TOKEN"):
+        audio = await _replicate_tts(text, language)
+        if audio:
+            return audio
+        # Replicate failed -> fall back to OpenAI
     return await _openai_tts(text, language, instructions=_coach_instructions(language, emotion))
 
 

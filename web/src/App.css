@@ -61,6 +61,50 @@
   color: #0e1116; font-weight: 700; padding: 0 16px; cursor: pointer; flex-shrink: 0;
 }
 
+/* mode switch (Коуч / Техника 3D) */
+.modes { margin-left: auto; display: flex; gap: 6px; }
+.modes button {
+  font-size: 13px; font-weight: 700; color: #9aa4b2; cursor: pointer;
+  background: #0e131a; border: 1px solid #20262e; padding: 6px 12px; border-radius: 999px;
+}
+.modes button.on { color: #0e1116; background: #c8ff00; border-color: #c8ff00; }
+
+/* 3D technique analyzer */
+.tech { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tech-stage { flex: 1; position: relative; min-height: 0; background: #0b0f14; }
+.tech-empty {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px;
+}
+.tech-cta { font-size: 20px; font-weight: 800; color: #c8ff00; }
+.tech-spinner { font-size: 16px; font-weight: 700; color: #e8eaed; }
+.tech-hint { font-size: 13px; color: #9aa4b2; max-width: 440px; line-height: 1.5; }
+.tech-progress {
+  width: 260px; height: 8px; background: #11161d; border: 1px solid #20262e;
+  border-radius: 999px; overflow: hidden;
+}
+.tech-progress > div { height: 100%; background: linear-gradient(90deg, #c8ff00, #7bd400); transition: width .15s; }
+
+.tech-bar {
+  height: 64px; display: flex; gap: 10px; align-items: center;
+  padding: 0 14px; border-top: 1px solid #20262e; background: #11161d;
+}
+.tech-upload {
+  height: 42px; display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 10px; border: none; background: #c8ff00; color: #0e1116;
+  font-weight: 700; padding: 0 16px; cursor: pointer; flex-shrink: 0;
+}
+.tech-btn {
+  width: 42px; height: 42px; border-radius: 10px; border: 1px solid #20262e;
+  background: #0e131a; color: #e8eaed; font-size: 16px; cursor: pointer; flex-shrink: 0;
+}
+.tech-range { flex: 1; accent-color: #c8ff00; }
+.tech-count { font-size: 13px; color: #9aa4b2; min-width: 64px; text-align: center; }
+.tech-speed {
+  height: 42px; border-radius: 10px; border: 1px solid #20262e;
+  background: #0e131a; color: #e8eaed; padding: 0 8px; cursor: pointer;
+}
+
 @media (max-width: 720px) {
   .main { flex-direction: column; }
   .panel { width: 100%; border-left: none; border-top: 1px solid #20262e; max-height: 40%; }

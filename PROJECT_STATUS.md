@@ -59,14 +59,37 @@ Run: `cd web && npm install && npm run dev` → http://localhost:5173
 ### Target layout (agreed mockup)
 3 zones: **left = План на сегодня** (done/todo checklist + weak zones) · **center = 3D coach** (lip-sync) · **right = Прогресс/статы** (UTR, bars, video) · **bottom = mic (push-to-talk) + chat input**. Mobile: stacked, panels become tabs (План/Прогресс/Видео). Current code = center + right only; left "План" panel still to add.
 
-### Next steps (NOT done)
-- **Step 3** — chat: input → Claude → TTS → audio → lip-sync. Build a **thin backend proxy** (e.g. FastAPI) that hides the Claude key and **reuses `coach_brain.chat_with_coach`** from the Python side.
-- **Step 4** — voice: browser Web Speech API (STT) → full speech-to-speech.
-- **Step 5** — real data in dashboard (pull UTR/program from the Python engine).
-- **Real avatar**: export GLB from **Avaturn** (ARKit blendshapes) → `web/public/avatar.glb` → drive `viseme_<key>` morph targets in `Avatar.jsx`. (Ready Player Me is dead — closed 2026-01-31.)
-- **Design pass LAST**: current visuals are scaffold ("clown"); polish UI + avatar only after functionality works, using the mockup as the blueprint.
+### Next steps
+- ✅ **Step 3 + 4 DONE** — `server.py` (FastAPI proxy: `/chat`, `/tts`, CORS) + `web/Controls.jsx`
+  wire type/voice → Claude → TTS → lip-sync. Run: `py -3.12 -m uvicorn server:app --port 8000` + `cd web && npm run dev`.
+- **Voice upgrade (in progress)** — moving TTS to **Replicate + `resemble-ai/chatterbox-multilingual`**
+  for a human, cloned, Russian voice that's cheap at scale (per-compute, not per-character;
+  permissive license; same model self-hostable later). Need `REPLICATE_API_TOKEN` + a voice sample;
+  wire `_replicate_tts` into `tts.py`. (ElevenLabs/MiniMax/Fish parked — too expensive at "30 min/day/user".)
+- ✅ **Step 5 DONE** — real data in the dashboard via `GET /player` (`src/dashboard.py`,
+  deterministic, **no LLM** → instant): UTR/target/weeks/streak, today's plan built from the
+  player's weak dims (drill bank), weak-zone tags, progress bars from `skill_ratings`.
+  `Dashboard.jsx` fetches it. Verified in-browser (Playwright): 0 console errors.
+- **Real avatar**: Avaturn GLB → `web/public/avatar.glb` → drive `viseme_<key>` morph targets. (Ready Player Me is dead.)
+- **Design pass LAST**: current visuals are scaffold; 3 direction mockups exist (`mockups/`). Polish after functionality.
+
+### Pending manual tests
+See [`docs/TESTING.md`](docs/TESTING.md) — living checklist. Top item: the **web voice E2E**
+(hear the cloned voice + lips move in the browser) is wired & API-verified but **not yet
+confirmed in-browser by the user**.
+
+### Backlog / future ideas
+- **3D technique analysis** (upload stroke video → mocap → compare vs ideal ATP + biomechanics): see
+  [`docs/3d-technique-analysis.md`](docs/3d-technique-analysis.md). Has the spec, risks, the 240 fps
+  recording requirement, and a 1-hour feasibility test (DeepMotion/Rokoko) to run before building.
+- **Russian voice** — current TTS is **Replicate + Chatterbox with a cloned voice (forClone.mp3)**;
+  works great in **English** (product is English-first for now). Russian **word stress is wrong**
+  (Chatterbox isn't RU-native; clone from an EN sample worsens it). Fix to try: auto-stress the RU
+  text with **RUAccent** (combining-accent marks) before TTS — IF Chatterbox honors marks (a
+  stress-marked test clip exists: `coach_clone_ru_stress.wav`). Else use a RU-native TTS (Silero/Yandex,
+  but lose cloning). Voice env: `REPLICATE_API_TOKEN`, `REPLICATE_VOICE_SAMPLE` in `.env`.
 
 ---
 
 ## Suggested next action
-Build web **step 3** (functional chat→voice→lip-sync) via a thin FastAPI proxy reusing `chat_with_coach`. Polish/design comes after.
+Finish the **voice upgrade** (Replicate + Chatterbox clone), then web **step 5** (real data). Design + 3D-analysis come later.

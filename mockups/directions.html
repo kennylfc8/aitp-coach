@@ -1,0 +1,112 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: system-ui, "Segoe UI", Roboto, sans-serif; }
+  body { background:#0a0d12; color:#e8eaed; padding:24px; }
+  .wrap { max-width:1000px; margin:0 auto; display:flex; flex-direction:column; gap:26px; }
+  .vlabel { font-size:18px; font-weight:600; color:#c8ff00; margin:6px 2px -8px; }
+  .vsub { font-size:13px; color:#9aa4b2; margin:0 2px 4px; }
+  .app { border:1px solid #20262e; border-radius:16px; overflow:hidden; background:#0e1116; }
+  .bar { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #20262e; background:#11161d; }
+  .logo { font-size:15px; font-weight:600; }
+  .chip { font-size:12px; background:rgba(200,255,0,.15); color:#c8ff00; padding:3px 10px; border-radius:999px; }
+  .panel { background:#11161d; border-radius:12px; padding:12px; }
+  .muted { color:#9aa4b2; } .h3 { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:#9aa4b2; margin-bottom:8px; }
+  .utr { font-size:26px; font-weight:700; color:#c8ff00; }
+  .coach { width:100px; height:100px; border-radius:50%; background:#e7b48c; position:relative; box-shadow:0 0 0 8px #c8ff00, 0 0 0 9px #11161d; }
+  .coach.big { width:150px; height:150px; }
+  .coach .eye { position:absolute; top:36%; width:13px; height:13px; border-radius:50%; background:#15181d; }
+  .coach.big .eye { width:18px; height:18px; }
+  .coach .eye.l { left:28%; } .coach .eye.r { right:28%; }
+  .coach .mouth { position:absolute; bottom:24%; left:50%; transform:translateX(-50%); width:42%; height:8px; border-radius:6px; background:#7a1f1f; }
+  .bubble { font-size:13px; color:#cfd6df; border:1px dashed #2c3540; border-radius:10px; padding:7px 11px; max-width:80%; text-align:center; }
+  .item { display:flex; align-items:center; gap:7px; font-size:13px; padding:3px 0; }
+  .done { color:#7a8597; } .dot { color:#5f6b7a; }
+  .ok { color:#c8ff00; }
+  .track { height:6px; background:#0e131a; border:1px solid #20262e; border-radius:999px; margin-top:4px; }
+  .fill { height:100%; background:#c8ff00; border-radius:999px; }
+  .ctrl { display:flex; align-items:center; gap:10px; padding:12px 16px; border-top:1px solid #20262e; }
+  .mic { width:38px; height:38px; border-radius:50%; background:rgba(200,255,0,.15); display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .input { flex:1; height:36px; border:1px solid #20262e; border-radius:10px; display:flex; align-items:center; padding:0 12px; font-size:13px; color:#7a8597; background:#0e131a; }
+  .tag { font-size:12px; background:#2a1414; color:#ff8e8e; border:1px solid #4a1f1f; padding:2px 9px; border-radius:999px; }
+  .ring { width:70px; height:70px; border-radius:50%; background:conic-gradient(#c8ff00 var(--p), #1b222b 0); display:flex; align-items:center; justify-content:center; }
+  .ring .in { width:54px; height:54px; border-radius:50%; background:#11161d; }
+</style></head><body><div class="wrap">
+
+  <div>
+    <div class="vlabel">A · Кокпит</div><div class="vsub">всё на виду — план слева, тренер в центре, стата справа</div>
+    <div class="app">
+      <div class="bar"><span class="logo">🎾 AI Tennis Coach</span><span class="chip">всё на виду</span></div>
+      <div style="display:grid; grid-template-columns:200px 1fr 200px; gap:12px; padding:14px;">
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="panel"><div class="h3">🎯 Цель</div><div style="font-size:15px; font-weight:500;">UTR 6.7 → 7.5</div><div class="muted" style="font-size:12px;">12 нед · фаза 2/12</div></div>
+          <div class="panel"><div class="h3">План на сегодня</div>
+            <div class="item done"><span class="ok">✓</span> Разминка <span class="muted" style="margin-left:auto;">15м</span></div>
+            <div class="item done"><span class="ok">✓</span> Бэкхенд <span class="muted" style="margin-left:auto;">20м</span></div>
+            <div class="item"><span class="dot">○</span> Подача <span class="muted" style="margin-left:auto;">20м</span></div>
+            <div class="item"><span class="dot">○</span> Очки <span class="muted" style="margin-left:auto;">15м</span></div>
+          </div>
+        </div>
+        <div class="panel" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; min-height:240px;">
+          <div class="coach"><span class="eye l"></span><span class="eye r"></span><span class="mouth"></span></div>
+          <div class="bubble">«Бэкхенд — твоя зона роста. Погнали 80 повторов!»</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="panel"><div class="h3">UTR</div><div class="utr">6.7</div><div class="muted" style="font-size:11px;">уверенность 80%</div></div>
+          <div class="panel"><div class="h3">Прогресс</div>
+            <div style="font-size:12px;">Бэкхенд<div class="track"><div class="fill" style="width:50%"></div></div></div>
+            <div style="font-size:12px; margin-top:7px;">Подача<div class="track"><div class="fill" style="width:55%"></div></div></div>
+          </div>
+          <div class="panel" style="font-size:13px;">▶ Видео дня</div>
+        </div>
+      </div>
+      <div class="ctrl"><span class="mic">🎤</span><span class="input">Напиши или скажи тренеру…</span></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="vlabel">Б · Тренер крупным планом</div><div class="vsub">кинематографично — большой коуч + субтитры, тонкая карта, плавающие контролы</div>
+    <div class="app">
+      <div class="bar"><span class="logo">🎾 AI Tennis Coach</span><span class="chip">тренер в фокусе</span></div>
+      <div style="position:relative; min-height:300px; background:#0e131a; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:20px;">
+        <div class="coach big"><span class="eye l"></span><span class="eye r"></span><span class="mouth"></span></div>
+        <div style="font-size:16px; text-align:center; max-width:62%;">«Слушай, бэкхенд снова просел — но это поправимо. 80 кроссов, погнали!»</div>
+        <div style="position:absolute; top:16px; right:16px; width:170px; display:flex; flex-direction:column; gap:10px;">
+          <div class="panel"><div class="muted" style="font-size:11px;">UTR · цель</div><div style="font-size:17px; font-weight:600; color:#c8ff00;">6.7 → 7.5</div></div>
+          <div class="panel" style="font-size:12px;" class="muted">Сегодня 2/4 · 🔥 14</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center; padding:14px;"><div style="display:flex; align-items:center; gap:10px; background:#11161d; border:1px solid #2c3540; border-radius:999px; padding:8px 14px 8px 8px;"><span class="mic">🎤</span><span class="muted" style="font-size:13px;">Удерживай — говори, или напиши…</span></div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="vlabel">В · Геймификация</div><div class="vsub">мотивация — квесты, XP, кольца прогресса, стрик, тренд</div>
+    <div class="app">
+      <div class="bar"><span class="logo">🎾 AI Tennis Coach</span><span class="chip">⚡ уровень 7</span></div>
+      <div style="display:grid; grid-template-columns:1fr 170px 1fr; gap:12px; padding:14px;">
+        <div class="panel">
+          <div class="h3">⚡ Квесты на сегодня</div>
+          <div class="item done"><span class="ok">✓</span> Разминка <span class="ok" style="margin-left:auto;">+10 XP</span></div>
+          <div class="item done"><span class="ok">✓</span> Бэкхенд <span class="ok" style="margin-left:auto;">+30 XP</span></div>
+          <div class="item"><span class="dot">○</span> Подача <span class="muted" style="margin-left:auto;">+30 XP</span></div>
+          <div class="muted" style="font-size:11px; margin-top:10px;">Уровень 7 · 40/100 XP</div>
+          <div class="track"><div class="fill" style="width:40%"></div></div>
+        </div>
+        <div class="panel" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;">
+          <div class="coach"><span class="eye l"></span><span class="eye r"></span><span class="mouth"></span></div>
+          <div style="font-size:18px; font-weight:600; color:#c8ff00;">🔥 14</div><div class="muted" style="font-size:11px;">стрик</div>
+        </div>
+        <div class="panel" style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+          <div style="display:flex; gap:14px;">
+            <div style="text-align:center;"><div class="ring" style="--p:68%"><div class="in"></div></div><div class="muted" style="font-size:11px; margin-top:4px;">UTR 6.7</div></div>
+            <div style="text-align:center;"><div class="ring" style="--p:50%"><div class="in"></div></div><div class="muted" style="font-size:11px; margin-top:4px;">нед 2/12</div></div>
+          </div>
+          <div class="muted" style="font-size:11px; align-self:flex-start;">UTR тренд</div>
+          <svg width="100%" height="36" viewBox="0 0 120 36" preserveAspectRatio="none"><polyline points="0,30 20,28 40,29 60,23 80,20 100,15 120,10" fill="none" stroke="#c8ff00" stroke-width="2"/></svg>
+        </div>
+      </div>
+      <div class="ctrl"><span class="mic">🎤</span><span class="input">Напиши или скажи тренеру…</span></div>
+    </div>
+  </div>
+
+</div></body></html>

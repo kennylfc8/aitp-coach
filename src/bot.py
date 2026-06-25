@@ -97,13 +97,18 @@ async def _send_voice(message: Message, audio: Optional[bytes]):
     """OGG/Opus -> Telegram voice note; mp3 (e.g. MiniMax) -> audio message. No-op if empty."""
     if not audio or len(audio) < 800:
         return
-    is_ogg = audio[:4] == b"OggS"
-    suffix = ".ogg" if is_ogg else ".mp3"
+    head = audio[:4]
+    if head == b"OggS":
+        suffix, is_voice = ".ogg", True
+    elif head == b"RIFF":
+        suffix, is_voice = ".wav", False
+    else:
+        suffix, is_voice = ".mp3", False
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(audio)
         path = tmp.name
     try:
-        if is_ogg:
+        if is_voice:
             await message.answer_voice(FSInputFile(path))
         else:
             await message.answer_audio(FSInputFile(path), title="Coach")

@@ -18,5 +18,10 @@ data/voice_samples/
 coach_sample.*
 *.mp3
 *.ogg
+*.wav
 # ...but the web demo's test audio IS part of the app — keep it
 !web/public/coach_test.mp3
+
+# Debug / tooling artifacts
+web_debug.log
+.playwright-mcp/

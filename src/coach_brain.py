@@ -177,8 +177,11 @@ def get_coach_persona(language: str) -> str:
     return COACH_CHAT_SYSTEM_RU if language == "RU" else COACH_CHAT_SYSTEM_EN
 
 
-def chat_with_coach(player: PlayerModel, user_message: str, history=None) -> str:
-    """Free-form conversational coaching, grounded in the player's profile."""
+def chat_with_coach(player: PlayerModel, user_message: str, history=None, brief: bool = False) -> str:
+    """Free-form conversational coaching, grounded in the player's profile.
+
+    brief=True (web/voice): force 1–2 short sentences so TTS is fast and the chat feels live.
+    """
     history = history or []
 
     parts = [
@@ -195,11 +198,20 @@ def chat_with_coach(player: PlayerModel, user_message: str, history=None) -> str
     context = "Контекст игрока: " + "; ".join(parts) + "."
 
     system = (COACH_CHAT_SYSTEM_RU if player.language == "RU" else COACH_CHAT_SYSTEM_EN) + "\n\n" + context
+    if brief:
+        system += (
+            "\n\nВАЖНО: отвечай ОЧЕНЬ коротко — 1–2 фразы, максимум ~30 слов. "
+            "Это живой голосовой разговор, а не лекция."
+            if player.language == "RU"
+            else
+            "\n\nIMPORTANT: keep it VERY short — 1–2 sentences, ~30 words max. "
+            "This is a live voice chat, not a lecture."
+        )
     messages = list(history) + [{"role": "user", "content": user_message}]
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=400,
+        max_tokens=160 if brief else 400,
         system=system,
         messages=messages,
     )
