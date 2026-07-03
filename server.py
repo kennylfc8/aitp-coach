@@ -47,8 +47,8 @@ def demo_player() -> PlayerModel:
     return PlayerModel(
         user_id=0, name="Player", level="intermediate", experience_years=4,
         language="EN", strengths=["forehand"], weaknesses=["backhand", "consistency"],
-        current_focus="backhand", utr_value=6.7, utr_confidence=80,
-        target_utr=7.5, target_date=(now + timedelta(weeks=12)).strftime("%Y-%m-%d"),
+        current_focus="backhand", utr_value=4.0, utr_confidence=80,
+        target_utr=4.5, target_date=(now + timedelta(weeks=12)).strftime("%Y-%m-%d"),
         streak=14,
         skill_ratings={
             "forehand": 8.0, "backhand": 4.5, "serve": 5.5, "return": 6.0,

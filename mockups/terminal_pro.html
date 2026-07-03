@@ -1,0 +1,171 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#03120a; --panel:#051a0e; --panel2:#04160c;
+  --lime:#c8ff00; --grn:#4ef08a; --dim:#2f7a52; --line:#123d27; --txt:#cdeede; --mut:#5f8a72;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1440px;height:864px;background:var(--bg);color:var(--txt);
+  font-family:'IBM Plex Mono',monospace;font-size:13px;overflow:hidden;position:relative}
+body:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:26px 26px;opacity:.35}
+.app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column}
+.lime{color:var(--lime)} .grn{color:var(--grn)} .mut{color:var(--mut)} .dim{color:var(--dim)}
+
+/* top bar */
+.top{height:50px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:24px;padding:0 18px;background:var(--panel2)}
+.brand{font-weight:700;letter-spacing:1px;color:var(--lime)}
+.brand b{color:var(--txt)}
+.tabs{display:flex;gap:8px}
+.tab{padding:5px 12px;border:1px solid var(--line);color:var(--mut);letter-spacing:.5px}
+.tab.on{color:#04150a;background:var(--lime);border-color:var(--lime);font-weight:600}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:18px}
+.kpi b{color:var(--lime);font-weight:700} .kpi .up{color:var(--grn)}
+.live{display:flex;align-items:center;gap:7px;color:var(--grn)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--grn);box-shadow:0 0 10px var(--grn)}
+
+/* main */
+.main{flex:1;display:flex;min-height:0}
+.stage{flex:1.55;border-right:1px solid var(--line);position:relative;display:flex;flex-direction:column;padding:16px}
+.panel{width:454px;display:flex;flex-direction:column}
+
+.label{color:var(--dim);letter-spacing:1.5px;font-size:11px;margin-bottom:8px}
+.bracket{color:var(--dim)}
+
+/* coach viewport */
+.view{flex:1;border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;background:
+  radial-gradient(60% 60% at 50% 38%,#0a2a18 0,#03120a 70%)}
+.corner{position:absolute;width:16px;height:16px;border:2px solid var(--lime)}
+.corner.tl{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.corner.tr{top:-1px;right:-1px;border-left:0;border-bottom:0}
+.corner.bl{bottom:-1px;left:-1px;border-right:0;border-top:0}
+.corner.br{bottom:-1px;right:-1px;border-left:0;border-top:0}
+.vlabel{position:absolute;top:10px;left:12px;color:var(--dim);font-size:11px;letter-spacing:1px}
+.vstat{position:absolute;top:10px;right:12px;color:var(--mut);font-size:11px}
+/* wireframe head */
+.orb{width:240px;height:240px;border-radius:50%;position:relative;
+  background:radial-gradient(circle at 42% 36%,#103a22,#051c0e 70%);
+  box-shadow:0 0 60px #0f3,inset 0 0 50px #0a2a18;border:1px solid #1efa6e44}
+.orb:before,.orb:after{content:"";position:absolute;inset:0;border-radius:50%;border:1px solid #2efa7e33}
+.orb:before{transform:rotateX(72deg)} .orb:after{transform:rotateY(72deg)}
+.scan{position:absolute;left:8%;right:8%;height:1px;background:var(--lime);top:50%;box-shadow:0 0 12px var(--lime);opacity:.8}
+.eyes{position:absolute;top:42%;left:0;right:0;display:flex;justify-content:center;gap:40px}
+.eyes i{width:14px;height:14px;border-radius:50%;background:var(--lime);box-shadow:0 0 14px var(--lime)}
+.transcript{margin-top:14px;border:1px solid var(--line);padding:10px 12px;background:var(--panel2);min-height:54px}
+.transcript .who{color:var(--dim);font-size:11px}
+.transcript .msg{color:var(--txt)} .cursor{color:var(--lime)}
+.wave{display:flex;gap:3px;align-items:flex-end;height:18px;margin-top:6px}
+.wave i{width:3px;background:var(--grn);opacity:.8}
+
+/* right modules */
+.mod{border:1px solid var(--line);margin-bottom:12px;background:var(--panel)}
+.mod.scrollpad{padding:12px 14px}
+.mhead{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:9px 14px;color:var(--grn);letter-spacing:1px;font-size:12px}
+.mhead .x{color:var(--dim)}
+.mbody{padding:12px 14px}
+.row{display:flex;justify-content:space-between;padding:3px 0}
+.row .k{color:var(--mut)} .row .v{color:var(--txt)} .row .v.hi{color:var(--lime);font-weight:600}
+.big{font-family:'Barlow Condensed';font-size:46px;font-weight:700;color:var(--lime);line-height:1;letter-spacing:1px}
+.arrow{color:var(--grn);font-size:18px}
+.plan div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line)}
+.plan div:last-child{border:0}
+.plan .num{color:var(--dim)} .plan .nm{color:var(--txt);flex:1;margin:0 10px} .plan .t{color:var(--grn)}
+.tags{display:flex;gap:8px;flex-wrap:wrap}
+.tg{border:1px solid #4a1f1f;background:#1a0c0c;color:#ff8a8a;padding:3px 9px;font-size:11px}
+.bar{margin:7px 0}
+.bar .top2{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
+.bar .top2 .nm{color:var(--mut)} .bar .top2 .n{color:var(--lime)}
+.meter{font-size:12px;letter-spacing:1px}
+.meter .f{color:var(--lime)} .meter .e{color:var(--line)}
+
+/* command bar */
+.cmd{height:58px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--panel2)}
+.prompt{flex:1;display:flex;align-items:center;gap:8px;border:1px solid var(--line);height:36px;padding:0 12px;background:#02160b;color:var(--mut)}
+.prompt .gt{color:var(--lime)} .blink{width:8px;height:15px;background:var(--lime);display:inline-block;margin-left:2px}
+.btn{height:36px;border:1px solid var(--line);padding:0 14px;display:flex;align-items:center;gap:7px;color:var(--grn);letter-spacing:1px}
+.btn.rec{color:#ff6b6b;border-color:#5a1f1f}
+.btn.send{background:var(--lime);color:#04150a;border-color:var(--lime);font-weight:700}
+</style></head>
+<body><div class="app">
+
+  <div class="top">
+    <div class="brand">▌ ACE<b>//</b>COACH</div>
+    <div class="tabs"><div class="tab on">COACH</div><div class="tab">TECHNIQUE.3D</div></div>
+    <div class="right">
+      <div class="kpi mut">UTR <b>6.70</b> <span class="up">▲0.30</span></div>
+      <div class="kpi mut">STREAK <b>14</b>d</div>
+      <div class="live"><span class="dot"></span>LIVE</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- coach stage -->
+    <div class="stage">
+      <div class="label">┌ COACH.AVATAR ───────────────────────────────</div>
+      <div class="view">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="vlabel">&gt; render: live · lipsync: on</div>
+        <div class="vstat">fps 60 · ctx running</div>
+        <div class="orb"><div class="scan"></div><div class="eyes"><i></i><i></i></div></div>
+      </div>
+      <div class="transcript">
+        <div class="who">&gt; COACH //</div>
+        <div class="msg">Lazy legs, champ. Bend those knees and EXPLODE through contact.<span class="blink" style="height:13px;vertical-align:-2px"></span></div>
+        <div class="wave">
+          <i style="height:6px"></i><i style="height:14px"></i><i style="height:9px"></i><i style="height:18px"></i><i style="height:11px"></i><i style="height:16px"></i><i style="height:7px"></i><i style="height:13px"></i><i style="height:10px"></i><i style="height:17px"></i><i style="height:8px"></i><i style="height:12px"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- data panel -->
+    <div class="panel">
+      <div class="mod" style="margin:16px 16px 12px">
+        <div class="mhead">&gt; PLAYER.RATING<span class="x">[utr]</span></div>
+        <div class="mbody">
+          <div style="display:flex;align-items:flex-end;gap:14px">
+            <div class="big">6.70</div><div class="arrow">──▸</div><div class="big" style="color:var(--grn)">7.50</div>
+          </div>
+          <div class="row"><span class="k">confidence</span><span class="v hi">80%</span></div>
+          <div class="row"><span class="k">deadline</span><span class="v">12 weeks</span></div>
+          <div class="row"><span class="k">focus</span><span class="v">backhand</span></div>
+        </div>
+      </div>
+
+      <div class="mod" style="margin:0 16px 12px">
+        <div class="mhead">&gt; TODAY.SESSION<span class="x">[70m]</span></div>
+        <div class="mbody plan">
+          <div><span class="num">01</span><span class="nm">WARMUP + MOBILITY</span><span class="t">10m</span></div>
+          <div><span class="num">02</span><span class="nm">BACKHAND CROSS</span><span class="t">20m</span></div>
+          <div><span class="num">03</span><span class="nm">20-BALL RALLY</span><span class="t">15m</span></div>
+          <div><span class="num">04</span><span class="nm">VOLLEY REACT</span><span class="t">15m</span></div>
+          <div><span class="num">05</span><span class="nm">LIVE POINTS</span><span class="t">15m</span></div>
+        </div>
+      </div>
+
+      <div class="mod" style="margin:0 16px 12px">
+        <div class="mhead">&gt; WEAK.ZONES<span class="x">[2]</span></div>
+        <div class="mbody"><div class="tags"><span class="tg">BACKHAND</span><span class="tg">CONSISTENCY</span></div></div>
+      </div>
+
+      <div class="mod" style="margin:0 16px 16px">
+        <div class="mhead">&gt; SKILL.MATRIX<span class="x">[/10]</span></div>
+        <div class="mbody">
+          <div class="bar"><div class="top2"><span class="nm">FOREHAND</span><span class="n">8.0</span></div><div class="meter"><span class="f">████████</span><span class="e">██</span></div></div>
+          <div class="bar"><div class="top2"><span class="nm">BACKHAND</span><span class="n">4.5</span></div><div class="meter"><span class="f">████</span><span class="e">██████</span></div></div>
+          <div class="bar"><div class="top2"><span class="nm">SERVE</span><span class="n">5.5</span></div><div class="meter"><span class="f">█████</span><span class="e">█████</span></div></div>
+          <div class="bar"><div class="top2"><span class="nm">MOVEMENT</span><span class="n">7.0</span></div><div class="meter"><span class="f">███████</span><span class="e">███</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmd">
+    <div class="prompt"><span class="gt">&gt;</span> ask the coach<span class="blink"></span></div>
+    <div class="btn rec">● REC</div>
+    <div class="btn send">SEND ▸</div>
+  </div>
+
+</div></body></html>

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style data-omelette-print-defaults>
+@media print {
+  @page { margin: 0.5in; }
+  h1, h2, h3, h4, h5, h6 { break-after: avoid; }
+  figure, table, pre, blockquote, img, svg, tr, [class~="card" i] { break-inside: avoid; }
+  img, svg { max-width: 100%; }
+  p { orphans: 3; widows: 3; }
+}
+</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;background:#000;}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  @keyframes scan{0%{top:-4%}100%{top:104%}}
+  @keyframes wv{0%,100%{transform:scaleY(.18)}50%{transform:scaleY(1)}}
+  @keyframes orbpulse{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.04);opacity:1}}
+  @keyframes ringspin{to{transform:rotate(360deg)}}
+  @keyframes recpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,70,70,.55)}50%{box-shadow:0 0 0 6px rgba(255,70,70,0)}}
+  .scrollarea::-webkit-scrollbar{width:0;background:transparent;}
+  ::selection{background:#c8ff00;color:#03120a;}
+</style>
+</helmet>
+<div style="width:390px;height:844px;background:#03120a;color:#4ef08a;font-family:'IBM Plex Mono',monospace;position:relative;overflow:hidden;display:flex;flex-direction:column;background-image:linear-gradient(rgba(78,240,138,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(78,240,138,.045) 1px,transparent 1px);background-size:28px 28px;box-shadow:inset 0 0 140px rgba(0,0,0,.7),inset 0 0 40px rgba(78,240,138,.05);">
+
+  <!-- ===== STATUS NOTCH ===== -->
+  <div style="flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:9px 18px 6px;font-size:11px;color:#3f8a5e;letter-spacing:.5px;">
+    <span style="color:#cfeede;font-weight:600;">9:41</span>
+    <span>&#9612;&#9612;&#9612; &#9745; <span style="color:#c8ff00;">88%</span></span>
+  </div>
+
+  <!-- ===== TOPBAR ===== -->
+  <div style="flex:0 0 auto;padding:4px 16px 10px;border-bottom:1px solid rgba(78,240,138,.14);">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="color:#c8ff00;font-size:15px;line-height:1;text-shadow:0 0 9px rgba(200,255,0,.6);">&#9612;</span>
+        <span style="font-size:14px;font-weight:700;letter-spacing:1.2px;color:#eafff1;">ACE<span style="color:#4ef08a;">//</span>COACH</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:11px;font-size:11px;">
+        <span style="display:flex;align-items:baseline;gap:5px;"><span style="color:#c8ff00;font-weight:700;font-size:13px;text-shadow:0 0 8px rgba(200,255,0,.5);">6.70</span><span style="color:#4ef08a;">&#9650;</span></span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#ff4d4d;box-shadow:0 0 8px rgba(255,77,77,.9);display:inline-block;animation:recpulse 1.6s ease-out infinite;"></span><span style="color:#ff7a7a;font-weight:600;">LIVE</span></span>
+      </div>
+    </div>
+    <!-- tabs -->
+    <div style="display:flex;gap:7px;margin-top:9px;">
+      <div onClick="{{ tabCoach }}" style="{{ tabCoachStyle }}">[ COACH ]</div>
+      <div onClick="{{ tabTech }}" style="{{ tabTechStyle }}">[ TECHNIQUE.3D ]</div>
+    </div>
+  </div>
+
+  <!-- ===== SCROLL CONTENT ===== -->
+  <div class="scrollarea" style="flex:1 1 auto;overflow-y:auto;min-height:0;padding:12px 16px 14px;display:flex;flex-direction:column;gap:12px;">
+
+    <!-- COACH VIEWPORT -->
+    <div style="position:relative;border:1px solid rgba(200,255,0,.28);border-radius:2px;background:radial-gradient(120% 70% at 50% 36%,rgba(78,240,138,.06),rgba(3,18,10,0) 70%);overflow:hidden;flex:0 0 auto;">
+      <div style="position:absolute;top:-1px;left:-1px;width:15px;height:15px;border-top:2px solid #c8ff00;border-left:2px solid #c8ff00;z-index:6;"></div>
+      <div style="position:absolute;top:-1px;right:-1px;width:15px;height:15px;border-top:2px solid #c8ff00;border-right:2px solid #c8ff00;z-index:6;"></div>
+      <div style="position:absolute;bottom:-1px;left:-1px;width:15px;height:15px;border-bottom:2px solid #c8ff00;border-left:2px solid #c8ff00;z-index:6;"></div>
+      <div style="position:absolute;bottom:-1px;right:-1px;width:15px;height:15px;border-bottom:2px solid #c8ff00;border-right:2px solid #c8ff00;z-index:6;"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 13px;font-size:10px;letter-spacing:.3px;border-bottom:1px solid rgba(78,240,138,.12);color:#3f8a5e;">
+        <span>&gt; render: <span style="color:#4ef08a;">live</span> &#183; lipsync: <span style="color:#c8ff00;">on</span> &#183; fps <span style="color:#eafff1;">60</span></span>
+        <span style="color:#235f3e;">v2.4 &#9608;</span>
+      </div>
+
+      <!-- orb -->
+      <div style="position:relative;height:206px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+        <div style="position:absolute;bottom:16%;left:50%;transform:translateX(-50%);width:200px;height:42px;background:radial-gradient(50% 100% at 50% 50%,rgba(78,240,138,.22),transparent 70%);filter:blur(7px);"></div>
+        <div style="position:absolute;width:236px;height:236px;border-radius:50%;border:1px dashed rgba(78,240,138,.22);animation:ringspin 26s linear infinite;"></div>
+        <div style="position:relative;width:172px;height:172px;border-radius:50%;overflow:hidden;border:1px solid rgba(200,255,0,.3);background:radial-gradient(circle at 50% 42%,rgba(200,255,0,.32),rgba(78,240,138,.16) 38%,rgba(8,40,24,.5) 66%,rgba(3,18,10,.2) 100%);box-shadow:0 0 50px rgba(78,240,138,.4),0 0 90px rgba(200,255,0,.14),inset 0 0 40px rgba(200,255,0,.18);animation:orbpulse 4.5s ease-in-out infinite;">
+          <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(3,18,10,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(3,18,10,.5) 1px,transparent 1px);background-size:14px 14px;mix-blend-mode:overlay;opacity:.7;"></div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62px;height:62px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.85),rgba(200,255,0,.6) 45%,transparent 72%);filter:blur(2px);"></div>
+          <div style="position:absolute;top:41%;left:33%;width:18px;height:4px;border-radius:3px;background:rgba(3,18,10,.55);"></div>
+          <div style="position:absolute;top:41%;right:33%;width:18px;height:4px;border-radius:3px;background:rgba(3,18,10,.55);"></div>
+          <div style="position:absolute;left:0;width:100%;height:3px;background:linear-gradient(90deg,transparent,rgba(200,255,0,.9),transparent);box-shadow:0 0 10px rgba(200,255,0,.8);animation:scan 3.2s linear infinite;"></div>
+        </div>
+        <div style="position:absolute;bottom:11px;left:13px;font-size:10px;color:#235f3e;">TRACKING&#9612;</div>
+      </div>
+
+      <!-- transcript + waveform -->
+      <div style="border-top:1px solid rgba(78,240,138,.14);background:rgba(3,18,10,.55);padding:11px 13px 13px;">
+        <div style="font-size:12px;line-height:1.45;">
+          <span style="color:#c8ff00;font-weight:600;">&gt; coach:</span>
+          <span style="color:#cfeede;"> {{ transcript }}<span style="display:inline-block;width:7px;height:12px;background:#c8ff00;margin-left:3px;vertical-align:-1px;animation:blink 1s step-end infinite;"></span></span>
+        </div>
+        <div style="margin-top:9px;display:flex;align-items:center;gap:9px;">
+          <span style="font-size:9.5px;color:#235f3e;flex:0 0 auto;">AUDIO&#9612;</span>
+          {{ waveform }}
+          <span style="font-size:9.5px;color:#3f8a5e;flex:0 0 auto;">0:14</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAYER.RATING -->
+    <div style="position:relative;border:1px solid rgba(78,240,138,.2);background:rgba(78,240,138,.025);border-radius:2px;padding:12px 14px 14px;flex:0 0 auto;">
+      <div style="position:absolute;top:-1px;left:-1px;width:10px;height:10px;border-top:1px solid #4ef08a;border-left:1px solid #4ef08a;"></div>
+      <div style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-bottom:1px solid #4ef08a;border-right:1px solid #4ef08a;"></div>
+      <div style="font-size:10.5px;letter-spacing:1px;color:#3f8a5e;margin-bottom:9px;">&gt; PLAYER.RATING</div>
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <span style="font-size:11px;color:#3f8a5e;align-self:center;">UTR</span>
+        <span style="font-size:34px;font-weight:700;color:#c8ff00;line-height:.9;text-shadow:0 0 14px rgba(200,255,0,.45);">6.70</span>
+        <span style="font-size:16px;color:#2f8f5a;align-self:center;">&#9472;&#9656;</span>
+        <span style="font-size:22px;font-weight:600;color:#eafff1;align-self:center;">7.50</span>
+      </div>
+      <div style="margin-top:11px;display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:9px;font-size:10.5px;">
+        <div><div style="color:#235f3e;margin-bottom:3px;">CONFIDENCE</div><div style="color:#4ef08a;letter-spacing:-1px;font-size:11px;"><span style="color:#c8ff00;">{{ confFilled }}</span><span style="color:#1f5a39;">{{ confEmpty }}</span></div><div style="color:#eafff1;margin-top:2px;font-weight:600;">80%</div></div>
+        <div><div style="color:#235f3e;margin-bottom:3px;">DEADLINE</div><div style="color:#eafff1;font-weight:600;font-size:13px;">12 <span style="color:#3f8a5e;font-weight:400;font-size:10px;">wks</span></div></div>
+        <div><div style="color:#235f3e;margin-bottom:3px;">FOCUS</div><div style="color:#ff6b6b;font-weight:600;font-size:12px;">backhand</div></div>
+      </div>
+    </div>
+
+    <!-- TODAY.SESSION -->
+    <div style="position:relative;border:1px solid rgba(78,240,138,.2);background:rgba(78,240,138,.025);border-radius:2px;padding:12px 14px;flex:0 0 auto;">
+      <div style="position:absolute;top:-1px;left:-1px;width:10px;height:10px;border-top:1px solid #4ef08a;border-left:1px solid #4ef08a;"></div>
+      <div style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-bottom:1px solid #4ef08a;border-right:1px solid #4ef08a;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
+        <span style="font-size:10.5px;letter-spacing:1px;color:#3f8a5e;">&gt; TODAY.SESSION</span>
+        <span style="font-size:10.5px;color:#c8ff00;border:1px solid rgba(200,255,0,.4);padding:2px 7px;border-radius:2px;">70m</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="5">
+          <div style="{{ s.style }}" style-hover="background:rgba(200,255,0,.07);">
+            <span style="font-size:10.5px;color:{{ s.numColor }};font-weight:600;flex:0 0 auto;">{{ s.n }}</span>
+            <span style="font-size:12.5px;color:{{ s.nameColor }};flex:1 1 auto;letter-spacing:.2px;">{{ s.name }}</span>
+            <span style="font-size:10.5px;color:#3f8a5e;flex:0 0 auto;">{{ s.dur }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- WEAK.ZONES -->
+    <div style="position:relative;border:1px solid rgba(255,90,90,.22);background:rgba(255,90,90,.03);border-radius:2px;padding:12px 14px;flex:0 0 auto;">
+      <div style="position:absolute;top:-1px;left:-1px;width:10px;height:10px;border-top:1px solid rgba(255,90,90,.5);border-left:1px solid rgba(255,90,90,.5);"></div>
+      <div style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-bottom:1px solid rgba(255,90,90,.5);border-right:1px solid rgba(255,90,90,.5);"></div>
+      <div style="font-size:10.5px;letter-spacing:1px;color:#a85454;margin-bottom:9px;">&gt; WEAK.ZONES</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <span style="font-size:11.5px;color:#ff7a7a;border:1px solid rgba(255,90,90,.45);background:rgba(255,90,90,.08);padding:4px 10px;border-radius:2px;letter-spacing:.4px;">! BACKHAND</span>
+        <span style="font-size:11.5px;color:#ff7a7a;border:1px solid rgba(255,90,90,.45);background:rgba(255,90,90,.08);padding:4px 10px;border-radius:2px;letter-spacing:.4px;">! CONSISTENCY</span>
+      </div>
+    </div>
+
+    <!-- SKILL.MATRIX -->
+    <div style="position:relative;border:1px solid rgba(78,240,138,.2);background:rgba(78,240,138,.025);border-radius:2px;padding:12px 14px 14px;flex:0 0 auto;">
+      <div style="position:absolute;top:-1px;left:-1px;width:10px;height:10px;border-top:1px solid #4ef08a;border-left:1px solid #4ef08a;"></div>
+      <div style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-bottom:1px solid #4ef08a;border-right:1px solid #4ef08a;"></div>
+      <div style="font-size:10.5px;letter-spacing:1px;color:#3f8a5e;margin-bottom:10px;">&gt; SKILL.MATRIX</div>
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        <sc-for list="{{ skills }}" as="k" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:9px;font-size:11.5px;">
+            <span style="flex:0 0 72px;color:#cfeede;letter-spacing:.3px;">{{ k.name }}</span>
+            <span style="flex:1 1 auto;letter-spacing:-1px;font-size:12px;overflow:hidden;white-space:nowrap;"><span style="color:{{ k.color }};">{{ k.filled }}</span><span style="color:#173f29;">{{ k.empty }}</span></span>
+            <span style="flex:0 0 auto;color:{{ k.color }};font-weight:700;font-size:12.5px;">{{ k.val }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== COMMAND LINE ===== -->
+  <div onClick="{{ focusInput }}" style="flex:0 0 auto;display:flex;align-items:center;gap:9px;border-top:1px solid rgba(200,255,0,.3);background:rgba(78,240,138,.05);padding:11px 14px 16px;position:relative;cursor:text;">
+    <span style="color:#c8ff00;font-size:16px;font-weight:700;flex:0 0 auto;text-shadow:0 0 9px rgba(200,255,0,.5);">&gt;</span>
+    <div style="flex:1 1 auto;font-size:14px;display:flex;align-items:center;min-width:0;overflow:hidden;white-space:nowrap;">
+      <sc-if value="{{ hasCommand }}" hint-placeholder-val="{{ false }}"><span style="color:#eafff1;">{{ command }}</span></sc-if>
+      <sc-if value="{{ showPlaceholder }}" hint-placeholder-val="{{ true }}"><span style="color:#2f6b45;">ask the coach</span></sc-if>
+      <span style="display:inline-block;width:8px;height:16px;background:#c8ff00;margin-left:2px;animation:blink 1s step-end infinite;box-shadow:0 0 8px rgba(200,255,0,.6);"></span>
+    </div>
+    <input ref="{{ inputRef }}" value="{{ command }}" onChange="{{ onInput }}" onKeyDown="{{ onKeyDown }}" style="position:absolute;opacity:0;width:1px;height:1px;left:-9999px;" />
+    <button onClick="{{ toggleRec }}" style="{{ recStyle }}">
+      <span style="width:9px;height:9px;border-radius:50%;background:#ff4d4d;display:inline-block;box-shadow:0 0 8px rgba(255,77,77,.9);"></span>
+    </button>
+    <button onClick="{{ onSend }}" style="display:flex;align-items:center;gap:6px;background:#c8ff00;color:#03120a;border:none;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.8px;padding:11px 16px;border-radius:2px;cursor:pointer;box-shadow:0 0 20px rgba(200,255,0,.35);flex:0 0 auto;" style-hover="background:#d8ff44;">SEND &#9656;</button>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  inputRef = React.createRef();
+  state = {
+    command: '',
+    recording: false,
+    tab: 'COACH',
+    transcript: "Backhand: rotate from the hips earlier, split-step, drive through contact. Let's run 20 cross-court."
+  };
+
+  componentDidMount() {
+    try { this.inputRef.current && this.inputRef.current.focus(); } catch (e) {}
+  }
+
+  meter(pct, total) {
+    const n = Math.max(0, Math.min(total, Math.round(pct / 100 * total)));
+    return { filled: '\u2588'.repeat(n), empty: '\u2591'.repeat(total - n) };
+  }
+
+  renderVals() {
+    const T = 12;
+    const skills = [
+      { name: 'FOREHAND', v: 8.0 },
+      { name: 'BACKHAND', v: 4.5 },
+      { name: 'SERVE', v: 5.5 },
+      { name: 'MOVEMENT', v: 7.0 }
+    ].map(s => {
+      const m = this.meter(s.v * 10, T);
+      const weak = s.v < 5;
+      return { name: s.name, filled: m.filled, empty: m.empty, val: s.v.toFixed(1), color: weak ? '#ff6b6b' : '#c8ff00' };
+    });
+
+    const sessions = [
+      { n: '01', name: 'WARMUP', dur: '10m' },
+      { n: '02', name: 'BACKHAND CROSS', dur: '20m' },
+      { n: '03', name: '20-BALL RALLY', dur: '15m' },
+      { n: '04', name: 'VOLLEY REACT', dur: '15m' },
+      { n: '05', name: 'LIVE POINTS', dur: '15m' }
+    ].map((s, i) => ({
+      n: s.n, name: s.name, dur: s.dur,
+      numColor: i === 0 ? '#c8ff00' : '#2f8f5a',
+      nameColor: i === 0 ? '#eafff1' : '#9fd9b8',
+      style: {
+        display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 10px', borderRadius: '2px',
+        background: i === 0 ? 'rgba(200,255,0,.08)' : 'transparent',
+        borderLeft: i === 0 ? '2px solid #c8ff00' : '2px solid rgba(78,240,138,.12)',
+        cursor: 'pointer'
+      }
+    }));
+
+    const conf = this.meter(80, 12);
+
+    const bars = Array.from({ length: 36 }, (_, i) => {
+      const base = 8 + Math.abs(Math.sin(i * 0.55)) * 22 + (i % 4) * 2;
+      const amp = this.state.recording ? base * 1.25 : base;
+      return React.createElement('span', {
+        key: i,
+        style: {
+          display: 'inline-block', width: '3px', height: Math.min(32, amp) + 'px',
+          background: i % 8 === 0 ? '#c8ff00' : '#4ef08a',
+          opacity: this.state.recording ? 0.95 : 0.8, borderRadius: '1px', transformOrigin: 'center',
+          animation: 'wv ' + (0.6 + (i % 6) * 0.11).toFixed(2) + 's ease-in-out ' + (i * 0.028).toFixed(2) + 's infinite'
+        }
+      });
+    });
+    const waveform = React.createElement('div', {
+      style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: '2px', height: '34px', overflow: 'hidden' }
+    }, bars);
+
+    const tabBase = { flex: '1 1 auto', textAlign: 'center', fontSize: '11.5px', letterSpacing: '.6px', padding: '7px 6px', borderRadius: '2px', cursor: 'pointer' };
+    const tabCoachStyle = this.state.tab === 'COACH'
+      ? { ...tabBase, color: '#c8ff00', border: '1px solid rgba(200,255,0,.55)', background: 'rgba(200,255,0,.1)', fontWeight: 700, boxShadow: '0 0 14px rgba(200,255,0,.18)' }
+      : { ...tabBase, color: '#3f8a5e', border: '1px solid rgba(78,240,138,.2)', background: 'transparent' };
+    const tabTechStyle = this.state.tab === 'TECH'
+      ? { ...tabBase, color: '#4ef08a', border: '1px solid rgba(78,240,138,.55)', background: 'rgba(78,240,138,.08)', fontWeight: 700 }
+      : { ...tabBase, color: '#3f8a5e', border: '1px solid rgba(78,240,138,.2)', background: 'transparent' };
+
+    const recStyle = {
+      display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
+      padding: '11px', borderRadius: '2px', cursor: 'pointer', flex: '0 0 auto',
+      background: this.state.recording ? 'rgba(255,77,77,.18)' : 'rgba(255,77,77,.06)',
+      border: '1px solid rgba(255,90,90,.45)',
+      animation: this.state.recording ? 'recpulse 1.3s ease-out infinite' : 'none'
+    };
+
+    const cmd = this.state.command;
+
+    return {
+      sessions, skills, waveform,
+      confFilled: conf.filled, confEmpty: conf.empty,
+      transcript: this.state.transcript,
+      command: cmd, hasCommand: cmd.length > 0, showPlaceholder: cmd.length === 0,
+      tabCoachStyle, tabTechStyle, recStyle,
+      tabCoach: () => this.setState({ tab: 'COACH' }),
+      tabTech: () => this.setState({ tab: 'TECH' }),
+      toggleRec: (e) => { if (e) e.stopPropagation(); this.setState(s => ({ recording: !s.recording })); },
+      focusInput: () => { try { this.inputRef.current.focus(); } catch (e) {} },
+      onInput: (e) => this.setState({ command: e.target.value }),
+      onKeyDown: (e) => { if (e.key === 'Enter') this.send(); },
+      onSend: (e) => { if (e) e.stopPropagation(); this.send(); }
+    };
+  }
+
+  send() {
+    const q = this.state.command.trim();
+    if (!q) return;
+    this.setState({
+      command: '',
+      transcript: 'Copy that \u2014 "' + q + '". Analyzing your last 200 backhands\u2026 drill set queued.'
+    });
+    try { this.inputRef.current.focus(); } catch (e) {}
+  }
+}
+</script>
+<script>
+(async () => {
+  if (!document.title || !document.title.trim()) document.title = "ACE Coach Mobile";
+  // Prepend so page-supplied @page / break rules (deck-stage's margin:0,
+  // author CSS) keep source-order precedence over the baseline.
+  const baseCss = document.createElement('style');
+  baseCss.textContent = "@media print {\n  figure, table { break-inside: avoid; }\n  *, *::before, *::after {\n    print-color-adjust: exact; -webkit-print-color-adjust: exact;\n    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;\n    animation-delay: -99s !important; animation-duration: .001s !important;\n    animation-iteration-count: 1 !important; animation-fill-mode: both !important;\n    animation-play-state: running !important; transition-duration: 0s !important;\n  }\n}";
+  document.head.prepend(baseCss);
+  if (document.readyState === 'loading') {
+    await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true }));
+  }
+  let ds = document.querySelector('deck-stage');
+  // whenDefined never resolves when nothing registers the element, so only
+  // await it when a <deck-stage> tag exists (and race a timeout regardless).
+  if (ds && !customElements.get('deck-stage')) {
+    try {
+      await Promise.race([
+        customElements.whenDefined('deck-stage'),
+        new Promise((r) => setTimeout(r, 3000)),
+      ]);
+    } catch (e) {}
+    ds = document.querySelector('deck-stage');
+  }
+  // dc-runtime assigns window.DCLogic at init and mounts into #dc-root on
+  // DOMContentLoaded; settle on that subtree so React has rendered before
+  // print(). Non-DC pages fall through to weighing body.
+  const isDc = !ds && 'DCLogic' in window;
+  const settleRoot = ds || (isDc ? document.getElementById('dc-root') : null) || document.body;
+  if (settleRoot) {
+    // Weigh only content children — skip script/style/template so inline
+    // Babel/CSS doesn't register as stable "content" before the framework
+    // has mounted anything.
+    const MEDIA = 'img,svg,canvas,video,picture,iframe,embed,object';
+    const weigh = () => {
+      let text = 0, media = 0;
+      for (const c of settleRoot.children) {
+        const t = c.tagName;
+        if (t === 'SCRIPT' || t === 'STYLE' || t === 'TEMPLATE') continue;
+        text += (c.textContent || '').trim().length;
+        media += c.querySelectorAll(MEDIA).length + (c.matches(MEDIA) ? 1 : 0);
+      }
+      return text + media * 100;
+    };
+    // "Non-zero and stable" alone is not sufficient to mean rendered: generic
+    // body can carry a static shell while async main content is pending, and
+    // #dc-root can carry the root DC's static text while child refs are still
+    // .sc-placeholder boxes. Gate generic on readyState 'complete', and never
+    // accept stability while a dc-runtime placeholder is present.
+    const isGeneric = settleRoot === document.body;
+    const deadline = Date.now() + 15000;
+    let last = -1, stable = 0;
+    while (Date.now() < deadline) {
+      const n = weigh();
+      const ready =
+        (!isGeneric || document.readyState === 'complete') &&
+        !settleRoot.querySelector('.sc-placeholder');
+      if (n > 0 && n === last && ready) { if (++stable >= 2) break; } else { stable = 0; }
+      last = n;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+  // Project support.js may predate runtime default-seeding; push via bridge.
+  if (isDc && window.__dcSetProps && window.__dcRootName) {
+    try {
+      const dpEl = document.querySelector('script[data-dc-script]');
+      const meta = JSON.parse((dpEl && dpEl.getAttribute('data-props')) || '{}');
+      const bag = {};
+      for (const k in meta)
+        if (k[0] !== '$' && meta[k] && meta[k].default !== undefined)
+          bag[k] = meta[k].default;
+      if (Object.keys(bag).length) {
+        window.__dcSetProps(window.__dcRootName(), bag);
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    } catch (e) {}
+  }
+  // Reveal content gated on scroll or visibility before printing. Lazy <img>,
+  // IntersectionObserver fade-ins, and collapsed <details> don't render while
+  // off-screen, so a long page would print with them blank or closed. Open
+  // every <details>, force native-lazy images eager, and scroll the document
+  // through its full height to trip lazy-load + IO; then wait (bounded) for the
+  // newly-triggered images. Inert for deck-stage (slides aren't scroll-gated).
+  try {
+    for (const d of document.querySelectorAll('details')) d.open = true;
+    for (const img of document.querySelectorAll('img[loading="lazy"]'))
+      img.loading = 'eager';
+    const scroller = document.scrollingElement || document.documentElement;
+    const full = Math.max(scroller.scrollHeight, document.body.scrollHeight);
+    const step = window.innerHeight || 800;
+    for (let y = 0; y <= full; y += step) {
+      window.scrollTo(0, y);
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    window.scrollTo(0, 0);
+    await Promise.race([
+      Promise.all(
+        [...document.images].map((img) =>
+          img.complete
+            ? null
+            : new Promise((res) => {
+                img.addEventListener('load', res, { once: true });
+                img.addEventListener('error', res, { once: true });
+              })
+        )
+      ),
+      new Promise((r) => setTimeout(r, 4000)),
+    ]);
+  } catch (e) {}
+  try { await document.fonts.ready; } catch (e) {}
+  // Jump every animation to its end state so print() never captures a slide
+  // mid-entrance. Ordering matters: the 0s-transition style must be live
+  // BEFORE data-deck-active is set so attribute-keyed transitions don't
+  // start a (now-0s) run from the pre-active base.
+  const st = document.createElement('style');
+  st.textContent = '*,*::before,*::after{animation-delay:-99s !important;animation-duration:.001s !important;animation-iteration-count:1 !important;animation-fill-mode:both !important;animation-play-state:running !important;transition-duration:0s !important}';
+  document.head.appendChild(st);
+  for (const d of document.querySelectorAll('deck-stage')) {
+    for (const c of d.children) {
+      const t = c.tagName;
+      if (t === 'SCRIPT' || t === 'STYLE' || t === 'TEMPLATE') continue;
+      c.setAttribute('data-deck-active', '');
+    }
+  }
+  // Re-append deck-stage's @page last so no author @page can add a margin and
+  // spill each full-bleed slide onto two sheets. Backstop for old copies.
+  if (ds) {
+    let pg = document.getElementById('deck-stage-print-page');
+    if (!pg) {
+      pg = document.createElement('style');
+      pg.textContent = '@page{size:' + (+ds.getAttribute('width') || 1920) +
+        'px ' + (+ds.getAttribute('height') || 1080) + 'px;margin:0}';
+    }
+    document.body.appendChild(pg);
+  }
+  try {
+    const sweep = () => {
+      for (const a of document.getAnimations()) {
+        try { a.finish(); } catch (e) {
+          try { a.currentTime = (a.effect && a.effect.getComputedTiming().duration) || 0; a.pause(); } catch (e2) {}
+        }
+      }
+    };
+    sweep();
+    await new Promise((r) => requestAnimationFrame(r));
+    sweep();
+    await new Promise((r) => requestAnimationFrame(r));
+  } catch (e) {}
+  // Size the PDF page to the rendered design unless the file opted into
+  // standard paper via @page{size:letter|A4|…}. Decks own their own @page.
+  // Wrappers (body, …) lose padding+margin so the frame sits at (0,0); the
+  // frame itself loses only margin — its padding is INSIDE the measured
+  // rect and must stay, or content shifts and leaves a gap at bottom/right.
+  var __m = null;
+  try { __m = (() => {
+  var docEl = document.documentElement;
+  var doc = { width: docEl.scrollWidth, height: docEl.scrollHeight };
+
+  var ds = document.querySelector('deck-stage');
+  if (ds) {
+    var dw = Number(ds.getAttribute('width')) || 1920;
+    var dh = Number(ds.getAttribute('height')) || 1080;
+    var n = typeof ds.length === 'number' ? ds.length : ds.children.length;
+    var idx = typeof ds.index === 'number' ? ds.index : 0;
+    var frames = [];
+    for (var i = 0; i < n; i++) frames.push({ left: 0, top: 0, width: dw, height: dh });
+    return { kind: 'deck', doc: doc, frames: frames,
+      authored: frames.map(function(){return{width:true,height:true}}),
+      deck: { width: dw, height: dh, slideCount: n, index: idx },
+      signals: { paperPage: false, pxPage: false } };
+  }
+
+  var paperPage = false, pxPage = false;
+  var eachRule = function (fn) {
+    for (var s = 0; s < document.styleSheets.length; s++) {
+      var rs; try { rs = document.styleSheets[s].cssRules; } catch (e) { continue; }
+      for (var r = 0; r < rs.length; r++) {
+        fn(rs[r]);
+        if (rs[r].cssRules) for (var n = 0; n < rs[r].cssRules.length; n++) fn(rs[r].cssRules[n]);
+      }
+    }
+  };
+  eachRule(function (r) {
+    if (r.type !== 6) return;
+    var m = /\bsize\s*:\s*([^;}]+)/i.exec(r.cssText || '');
+    if (!m) return;
+    if (/\b(letter|a[3-5]|legal|ledger)\b/i.test(m[1])) paperPage = true;
+    if (/\d+(?:\.\d+)?px\b/i.test(m[1])) pxPage = true;
+  });
+  var signals = { paperPage: paperPage, pxPage: pxPage };
+
+  var pxVal = function (v) {
+    var m = /^(\d+(?:\.\d+)?)px$/.exec(v || ''); return m ? +m[1] : 0;
+  };
+  var authoredPx = function (el, prop) {
+    if (pxVal(el.style[prop])) return true;
+    var attr = el.getAttribute(prop);
+    if (attr && /^\d+$/.test(attr)) return true;
+    var hit = false;
+    eachRule(function (r) {
+      if (hit || r.type !== 1 || !r.style) return;
+      try { if (el.matches(r.selectorText) && pxVal(r.style[prop])) hit = true; } catch (e) {}
+    });
+    return hit;
+  };
+
+  var el = document.body, rootPxW = false;
+  for (;;) {
+    var kids = [];
+    for (var c = 0; c < el.children.length; c++) {
+      var t = el.children[c].tagName;
+      if (t !== 'SCRIPT' && t !== 'STYLE' && t !== 'TEMPLATE') kids.push(el.children[c]);
+    }
+    if (kids.length !== 1 || !(kids[0] instanceof HTMLElement)) break;
+    el.setAttribute('data-om-frame-wrap', '');
+    el = kids[0];
+    rootPxW = authoredPx(el, 'width');
+    if (rootPxW) break;
+  }
+  if (!rootPxW) rootPxW = authoredPx(el, 'width');
+
+  // @page{size:letter} alone is a flowing doc; with a px-width root it's a
+  // fixed sheet pretending to be paper — fall through and size to render.
+  if (paperPage && !rootPxW) {
+    return { kind: 'paper-doc', doc: doc, signals: signals,
+      frames: [{ left: 0, top: 0, width: doc.width, height: doc.height }],
+      authored: [{ width: false, height: false }] };
+  }
+
+  var sx = window.scrollX || 0, sy = window.scrollY || 0;
+  var rectOf = function (e) {
+    var r = e.getBoundingClientRect();
+    var oy; try { oy = getComputedStyle(e).overflowY; } catch (err) {}
+    var h = oy === 'visible' ? Math.max(r.height, e.scrollHeight || 0) : r.height;
+    return { left: r.left + sx, top: r.top + sy, width: r.width, height: h };
+  };
+
+  // Multi-frame: ≥2 visible non-fixed children, each with authored px width
+  // AND height, all within ±2px of each other. Off unless the page opts in
+  // via data-om-multi-frame on the stop element — guards against card grids
+  // and pricing tables that match the geometry but aren't separate canvases.
+  if (el.hasAttribute('data-om-multi-frame')) {
+    var cands = [];
+    for (var k = 0; k < el.children.length; k++) {
+      var ch = el.children[k];
+      var cs; try { cs = getComputedStyle(ch); } catch (e) { continue; }
+      if (cs.display === 'none' || cs.visibility === 'hidden' || cs.position === 'fixed') continue;
+      var rc = rectOf(ch);
+      if (rc.width < 2 || rc.height < 2) continue;
+      if (!authoredPx(ch, 'width') || !authoredPx(ch, 'height')) continue;
+      cands.push(rc);
+    }
+    if (cands.length >= 2) {
+      var w0 = cands[0].width, h0 = cands[0].height, ok = true;
+      for (var q = 1; q < cands.length; q++)
+        if (Math.abs(cands[q].width - w0) > 2 || Math.abs(cands[q].height - h0) > 2) ok = false;
+      if (ok) return { kind: 'multi-frame', doc: doc, signals: signals,
+        frames: cands, authored: cands.map(function(){return{width:true,height:true}}) };
+    }
+  }
+
+  el.setAttribute('data-om-frame', '');
+  return { kind: 'single-canvas', doc: doc, signals: signals,
+    frames: [rectOf(el)],
+    authored: [{ width: rootPxW, height: authoredPx(el, 'height') }] };
+})(); } catch (e) {}
+  var frame = null;
+  if (__m && __m.kind === 'single-canvas') {
+    var f = __m.frames && __m.frames[0];
+    if (f && f.width >= 200 && f.height >= 200) {
+      frame = f;
+      var fst = document.createElement('style');
+      fst.textContent = '@media print{@page{size:' + Math.ceil(f.width) + 'px ' +
+        Math.ceil(f.height) + 'px;margin:0}' +
+        'html,body,[data-om-frame-wrap]{padding:0!important;margin:0!important;background:none!important}' +
+        '[data-om-frame]{margin:0!important}}';
+      document.body.appendChild(fst);
+    }
+  }
+  // Relax break-inside on oversized elements. An element taller than a
+  // printable page can't honor break-inside: avoid — browsers either overflow
+  // it or push it whole to the next page, leaving a blank gap, then break it
+  // anyway at an arbitrary point. After the final layout (content revealed,
+  // animations jumped), find elements taller than a page that still compute
+  // break-inside: avoid and reset them to auto, so the browser breaks them at
+  // their children's boundaries instead (children keep their own avoid). PAGE_PX
+  // is a conservative portrait estimate at 96 CSS px/in — Letter/A4 usable
+  // height minus our 0.5in margins — so only clearly-oversized elements are
+  // touched and under-page elements still stay whole. Skipped for decks (slides
+  // are sized to the page) and for fixed-size canvases (frame set, or an author
+  // px-based @page) — runs as before for flowing docs on letter/A4.
+  try {
+    if (!ds && !frame && !(__m && __m.signals && __m.signals.pxPage)) {
+      const PAGE_PX = 1024;
+      // Our print defaults add a real @page margin only when the source has
+      // no @page of its own; computed style can't tell us (it reports screen
+      // media), so read the injected rule directly.
+      const defaults = document.querySelector('style[data-omelette-print-defaults]');
+      const pageInset = /@page\s*\{[^}]*margin/.test(defaults ? defaults.textContent || '' : '');
+      const SEL = 'section,article,figure,table,pre,blockquote,[class~="card" i],[class~="page" i],[class~="sheet" i]';
+      for (const el of document.body.querySelectorAll(SEL)) {
+        if (el instanceof HTMLElement && el.offsetHeight > PAGE_PX) {
+          el.setAttribute('data-om-oversized', '');
+          // Fake-paged docs simulate sheets with over-tall break-after:page
+          // boxes; honoring the break spills half-blank pages and ends a
+          // colored box mid-sheet. Flow them, and (only when we own the page
+          // inset) drop the redundant padding/background via the rule below.
+          const cs = getComputedStyle(el);
+          if (cs.breakAfter === 'page' || cs.pageBreakAfter === 'always') {
+            el.setAttribute('data-om-fakepage', '');
+          }
+        }
+      }
+      const ost = document.createElement('style');
+      ost.textContent = '@media print{' +
+        '[data-om-oversized]{break-inside:auto !important;page-break-inside:auto !important}' +
+        '[data-om-fakepage]{break-after:auto !important;page-break-after:auto !important}' +
+        (pageInset ? '[data-om-fakepage]{padding:0 !important;background:none !important}' : '') +
+        '}';
+      document.head.appendChild(ost);
+    }
+  } catch (e) {}
+  // macOS Preview renders Skia-PDF Luminosity soft-masks as opaque grey boxes;
+  // swap the CSS that triggers them for Preview-safe forms.
+  try {
+    for (const el of document.body.querySelectorAll('*')) {
+      const cs = getComputedStyle(el);
+
+      if (cs.boxShadow !== 'none' && cs.filter === 'none') {
+        const outs = [], kept = [];
+        for (const s of cs.boxShadow.split(/,(?![^(]*[)])/)) {
+          const t = s.trim();
+          const m = t.match(/^(rgba?[(][^)]+[)]) (-?[0-9.]+px) (-?[0-9.]+px) ([0-9.]+px) -?[0-9.]+px$/);
+          if (m && parseFloat(m[4]) > 0) outs.push('drop-shadow(' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[1] + ')');
+          else kept.push(t);
+        }
+        if (outs.length) {
+          el.style.setProperty('filter', outs.join(' '), 'important');
+          el.style.setProperty('box-shadow', kept.join(', ') || 'none', 'important');
+        }
+      }
+
+      const mask = cs.maskImage && cs.maskImage !== 'none' ? cs.maskImage : cs.webkitMaskImage;
+      if (mask && mask !== 'none' && cs.filter === 'none') el.style.setProperty('filter', 'opacity(1)', 'important');
+    }
+  } catch (e) {}
+  setTimeout(() => { try { window.print(); } catch (e) {} }, 200);
+})();
+</script>
+</body>
+</html>

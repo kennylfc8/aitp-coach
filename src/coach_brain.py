@@ -186,7 +186,7 @@ def chat_with_coach(player: PlayerModel, user_message: str, history=None, brief:
 
     parts = [
         f"имя {player.name}",
-        f"UTR ~{player.utr_value} (уверенность {player.utr_confidence}%)",
+        f"NTRP ~{player.utr_value} (confidence {player.utr_confidence}%)",
         f"уровень {player.level}",
         f"сильные: {', '.join(player.strengths) or '—'}",
         f"слабые: {', '.join(player.weaknesses) or '—'}",
@@ -194,7 +194,7 @@ def chat_with_coach(player: PlayerModel, user_message: str, history=None, brief:
         f"стрик: {player.streak}",
     ]
     if player.target_utr:
-        parts.append(f"цель UTR {player.target_utr}")
+        parts.append(f"target NTRP {player.target_utr}")
     context = "Контекст игрока: " + "; ".join(parts) + "."
 
     system = (COACH_CHAT_SYSTEM_RU if player.language == "RU" else COACH_CHAT_SYSTEM_EN) + "\n\n" + context

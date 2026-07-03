@@ -29,3 +29,5 @@ web_debug.log
 # Downloaded test video clips (large, throwaway)
 samples/
 *.mp4
+# Claude Design export duplicate (folder is committed, zip is not)
+\# AI Tennis Coach Terminal.zip

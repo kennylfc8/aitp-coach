@@ -70,6 +70,22 @@ Run: `cd web && npm install && npm run dev` → http://localhost:5173
   deterministic, **no LLM** → instant): UTR/target/weeks/streak, today's plan built from the
   player's weak dims (drill bank), weak-zone tags, progress bars from `skill_ratings`.
   `Dashboard.jsx` fetches it. Verified in-browser (Playwright): 0 console errors.
+- ✅ **Terminal Pro redesign LIVE** — implemented from the user's Claude Design handoff
+  (`# AI Tennis Coach Terminal/design_handoff_web_terminal/README.md`): topbar (tabs+KPIs),
+  coach viewport, dense right panel (ASCII meters), command line. `useCoach.js` hook owns
+  chat/voice; `CoachViewport/CommandLine/Dashboard` components. IBM Plex Mono, green+lime tokens.
+- ✅ **NTRP (not UTR) on the web surface** — ratings shown as NTRP 1.5–7.0
+  (self-rateable, USTA-style). Engine/bot internals still UTR-scaled (convert later).
+- ✅ **Onboarding funnel** (`onboarding.js` + `Onboarding.jsx`, localStorage profile):
+  QUICK (pick level) / HELP-ME-DETERMINE / DETAILED (12 skippable strokes) → NTRP computed
+  **weakest-link** (USTA principle), live NTRP readout, flexible target slider. ⟳ in topbar re-runs.
+- ✅ **INK SUMI-E coach avatar** (user picked style #20 of 20 mockups, `mockups/avatar_20.png`):
+  rice-paper stage + brush-drawn player animated from **our own mocap serve**
+  (`web/public/motion_serve.json`, exported by `_export_motion.py`), boiling strokes ~11fps,
+  ink splatter on fast phases, red sun pulses while the coach speaks (`InkCoach.jsx`).
+  Old CSS orb removed from viewport (Controls/CoachCanvas/Avatar components now unused — cleanup later).
+- ⚠️ Known polish debt: coach chat still uses the backend demo player (not the onboarding
+  profile); mixed RU/EN copy (terminal EN, technique/onboarding RU); technique tab styling.
 - **Real avatar**: Avaturn GLB → `web/public/avatar.glb` → drive `viseme_<key>` morph targets. (Ready Player Me is dead.)
 - **Design pass LAST**: current visuals are scaffold; 3 direction mockups exist (`mockups/`). Polish after functionality.
 

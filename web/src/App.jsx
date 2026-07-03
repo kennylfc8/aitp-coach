@@ -1,47 +1,60 @@
 import { useState, Suspense, lazy } from "react";
-import CoachCanvas from "./components/CoachCanvas";
 import Dashboard from "./components/Dashboard";
-import Controls from "./components/Controls";
+import CoachViewport from "./components/CoachViewport";
+import CommandLine from "./components/CommandLine";
+import Onboarding from "./components/Onboarding";
+import { useCoach } from "./useCoach";
+import { loadProfile, saveProfile, clearProfile } from "./onboarding";
 import "./App.css";
 
-// Lazy: keep MediaPipe (~heavy) out of the coach bundle — loads only when the tab is opened.
 const Technique = lazy(() => import("./components/Technique"));
 
 export default function App() {
-  const [mode, setMode] = useState("coach"); // "coach" | "technique"
+  const [profile, setProfile] = useState(loadProfile);
+  const [tab, setTab] = useState("coach");
+  const coach = useCoach();
+
+  // First run (no saved profile) → onboarding.
+  if (!profile) {
+    return <Onboarding onDone={(p) => { saveProfile(p); setProfile(p); }} />;
+  }
+
+  const reset = () => { clearProfile(); setProfile(null); };
 
   return (
-    <div className="app">
+    <div className="term">
       <header className="topbar">
-        🎾 AI Tennis Coach <span className="badge">3D · live</span>
-        <nav className="modes">
-          <button className={mode === "coach" ? "on" : ""} onClick={() => setMode("coach")}>
-            Коуч
-          </button>
-          <button className={mode === "technique" ? "on" : ""} onClick={() => setMode("technique")}>
-            Техника 3D
-          </button>
-        </nav>
+        <div className="brand">
+          <span className="bar">▌</span>ACE<span className="sl">//</span>COACH
+        </div>
+        <div className="tabs">
+          <button className={"tab" + (tab === "coach" ? " on" : "")} onClick={() => setTab("coach")}>COACH</button>
+          <button className={"tab" + (tab === "tech" ? " on tech" : "")} onClick={() => setTab("tech")}>TECHNIQUE.3D</button>
+        </div>
+        <div className="kpis">
+          <span><span className="dim">PLAYER</span> <span className="wd">{profile.name}</span></span>
+          <span className="sep">·</span>
+          <span><span className="dim">NTRP</span> <b>{profile.utr.value.toFixed(1)}</b> <span className="up">▸{profile.utr.target.toFixed(1)}</span></span>
+          <span className="sep">·</span>
+          <span><span className="dim">STREAK</span> <span className="wd">{profile.streak}d</span></span>
+          <span className="sep">·</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span className="recdot" /> <span className="red">LIVE</span>
+          </span>
+          <button className="tab" style={{ marginLeft: 8, padding: "3px 9px" }} onClick={reset} title="restart onboarding">⟳</button>
+        </div>
       </header>
 
-      {mode === "coach" ? (
+      {tab === "coach" ? (
         <>
-          <div className="main">
-            <div className="stage"><CoachCanvas /></div>
-            <Dashboard />
+          <div className="middle">
+            <CoachViewport transcript={coach.transcript} speaking={coach.speaking} recording={coach.recording} />
+            <Dashboard data={profile} />
           </div>
-          <Controls />
+          <CommandLine {...coach} />
         </>
       ) : (
-        <Suspense
-          fallback={
-            <div className="tech">
-              <div className="tech-stage">
-                <div className="tech-empty"><div className="tech-spinner">Загружаю модуль…</div></div>
-              </div>
-            </div>
-          }
-        >
+        <Suspense fallback={<div className="boot">loading TECHNIQUE.3D module…</div>}>
           <Technique />
         </Suspense>
       )}

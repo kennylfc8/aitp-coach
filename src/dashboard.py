@@ -1,10 +1,6 @@
 """
 Deterministic dashboard payload for the 3D web app — NO LLM calls, so it's instant.
-
-The web right-panel (UTR, today's plan, weak zones, progress bars) is assembled here
-straight from the PlayerModel + a static drill bank keyed by skill dimension. The heavy,
-Claude-generated session plan (plan_generator.generate_session_plan) is intentionally NOT
-used here — that's for the detailed per-session view, not the at-a-glance dashboard.
+English labels to match the Terminal Pro design (the app is English-first).
 """
 
 from datetime import date
@@ -13,32 +9,30 @@ from typing import Optional
 from .models import PlayerModel
 from .utr import DIMENSIONS
 
-DIM_LABELS_RU = {
-    "forehand": "Форхенд", "backhand": "Бэкхенд", "serve": "Подача",
-    "return": "Приём", "volley": "Волли", "movement": "Передвижение",
-    "consistency": "Стабильность", "power": "Мощность", "tactics": "Тактика",
-    "mental": "Психология", "fitness": "Физика",
+DIM_LABELS = {
+    "forehand": "FOREHAND", "backhand": "BACKHAND", "serve": "SERVE",
+    "return": "RETURN", "volley": "VOLLEY", "movement": "MOVEMENT",
+    "consistency": "CONSISTENCY", "power": "POWER", "tactics": "TACTICS",
+    "mental": "MENTAL", "fitness": "FITNESS",
 }
 
-# Deterministic drill bank: dimension -> first drill is used for that focus.
+# Deterministic drill bank: dimension -> (terminal-style name, minutes).
 DRILLS = {
-    "forehand": ("Форхенд кросс по корзине", 20),
-    "backhand": ("Бэкхенд кросс (корзина)", 20),
-    "serve": ("Подача: подброс + кик", 20),
-    "return": ("Приём по направлениям", 15),
-    "volley": ("Волли у сетки (реакция)", 15),
-    "movement": ("Разножка + подход к мячу", 15),
-    "consistency": ("20 мячей в рал без ошибки", 15),
-    "power": ("Ускорение по короткому мячу", 15),
-    "tactics": ("Игровые очки со схемой", 15),
-    "mental": ("Очки под давлением (на счёт)", 15),
-    "fitness": ("Интервалы / лесенка", 15),
+    "forehand": ("FOREHAND CROSS", 20),
+    "backhand": ("BACKHAND CROSS", 20),
+    "serve": ("SERVE: TOSS + KICK", 20),
+    "return": ("RETURN DIRECTIONS", 15),
+    "volley": ("VOLLEY REACT", 15),
+    "movement": ("SPLIT-STEP FOOTWORK", 15),
+    "consistency": ("20-BALL RALLY", 15),
+    "power": ("EXPLOSIVE SHORT BALL", 15),
+    "tactics": ("PATTERN POINTS", 15),
+    "mental": ("PRESSURE POINTS", 15),
+    "fitness": ("INTERVALS / LADDER", 15),
 }
 
-WARMUP = ("Разминка + суставная", 10)
-GAME = ("Игровые очки", 15)
-
-# Stable subset shown as progress bars (only those the player has ratings for show up).
+WARMUP = ("WARMUP", 10)
+GAME = ("LIVE POINTS", 15)
 BAR_KEYS = ["forehand", "backhand", "serve", "movement", "consistency"]
 
 
@@ -52,7 +46,6 @@ def _weeks_left(target_date: Optional[str]) -> Optional[int]:
 
 
 def _focus_dims(player: PlayerModel) -> list:
-    """Today's focus order: current_focus, then weaknesses, then lowest-rated dims."""
     order = []
     for d in [player.current_focus, *player.weaknesses]:
         if d in DIMENSIONS and d not in order:
@@ -66,7 +59,7 @@ def _focus_dims(player: PlayerModel) -> list:
 def _today_plan(player: PlayerModel) -> list:
     plan = [WARMUP]
     for d in _focus_dims(player)[:3]:
-        plan.append(DRILLS.get(d, ("Отработка техники", 15)))
+        plan.append(DRILLS.get(d, ("TECHNIQUE WORK", 15)))
     plan.append(GAME)
     return [{"title": t, "minutes": m} for t, m in plan]
 
@@ -74,14 +67,13 @@ def _today_plan(player: PlayerModel) -> list:
 def _skill_bars(player: PlayerModel) -> list:
     ratings = player.skill_ratings or {}
     return [
-        {"key": k, "label": DIM_LABELS_RU[k], "v": round(ratings[k] / 10.0, 2)}
+        {"key": k, "label": DIM_LABELS[k], "v": round(ratings[k] / 10.0, 2), "raw": round(ratings[k], 1)}
         for k in BAR_KEYS
         if k in ratings
     ]
 
 
 def build_dashboard(player: PlayerModel) -> dict:
-    """Everything the web right-panel needs, in one fast, deterministic payload."""
     return {
         "name": player.name,
         "utr": {
@@ -89,10 +81,11 @@ def build_dashboard(player: PlayerModel) -> dict:
             "confidence": player.utr_confidence,
             "target": player.target_utr,
             "weeks_left": _weeks_left(player.target_date),
+            "focus": DIM_LABELS.get(player.current_focus, (player.current_focus or "").upper()),
         },
         "streak": player.streak,
         "weaknesses": [
-            {"key": w, "label": DIM_LABELS_RU.get(w, w)} for w in player.weaknesses
+            {"key": w, "label": DIM_LABELS.get(w, w.upper())} for w in player.weaknesses
         ],
         "skills": _skill_bars(player),
         "today_plan": _today_plan(player),
