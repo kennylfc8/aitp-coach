@@ -1,6 +1,8 @@
-// Center stage: SUMI-E ink coach (our real mocap serve, brush-drawn) + status + transcript.
-import InkCoach from "./InkCoach";
+// Center stage: TOON ATHLETE — stylized game-style player with readable anatomy
+// (shoulders/elbows/knees), driven by our real mocap serve. R3F, lazy chunk.
+import { lazy, Suspense } from "react";
 
+const CoachChar3D = lazy(() => import("./CoachChar3D"));
 const BARS = Array.from({ length: 52 });
 
 export default function CoachViewport({ transcript, speaking, recording }) {
@@ -10,17 +12,19 @@ export default function CoachViewport({ transcript, speaking, recording }) {
 
       <div className="vstatus">
         <span>
-          &gt; render: <span className="grn">live</span> · style: <span className="lime">SUMI-E</span> · lipsync:{" "}
-          <span className="lime">{speaking ? "on" : "idle"}</span>
+          &gt; render: <span className="grn">live</span> · coach: <span className="lime">CH28.PRO</span> · rig:{" "}
+          <span className="white">full+fingers</span> · lipsync: <span className="lime">{speaking ? "on" : "idle"}</span>
         </span>
-        <span className="agent">COACH.AGENT — v3.0 █</span>
+        <span className="agent">COACH.AGENT — v3.1 █</span>
       </div>
 
-      <div className="stage paper">
-        <InkCoach speaking={speaking} />
-        <span className="pret tl">+</span>
-        <span className="pret tr">+</span>
-        <span className="pret bl">間 · SERVE.LOOP ▌</span>
+      <div className="stage">
+        <Suspense fallback={<div className="dim" style={{ fontSize: 12 }}>booting coach…</div>}>
+          <CoachChar3D speaking={speaking} transcript={transcript} />
+        </Suspense>
+        <span className="reticle tl">+</span>
+        <span className="reticle tr">+</span>
+        <span className="reticle bl">SERVE.LOOP · drag to orbit ▌</span>
       </div>
 
       <div className="transcript">

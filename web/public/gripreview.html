@@ -1,0 +1,89 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>body{margin:0;background:#05070a;font-family:monospace;color:#cfd6df}</style>
+<script type="importmap">{"imports":{
+ "three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+ "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head><body>
+<canvas id="grid" width="1500" height="560"></canvas>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+// tweakables (iterated by eye)
+const CURL = { i1: 0.95, i2: 1.05, i3: 0.75, th1: 0.5, th2: 0.55 };  // finger curl radians
+const RQ_ROT = [-1.57, 0, 0];   // handle along hand local +Z→ (fist barrel axis, blue)
+const RQ_POS = [5.5, 8, 0];     // deeper into the curl cavity (+X palm side, y at the fingers' wrap)
+
+const CW=480,CH=480,PAD=10;
+const grid=document.getElementById("grid").getContext("2d");
+grid.fillStyle="#05070a";grid.fillRect(0,0,1500,560);
+const label=(x,t)=>{grid.fillStyle="#9aa4b2";grid.font="13px monospace";grid.fillText(t,x+10,30+CH+18)};
+
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(CW,CH);renderer.toneMapping=THREE.ACESFilmicToneMapping;
+
+const sc=new THREE.Scene();sc.background=new THREE.Color("#0b1016");
+sc.add(new THREE.HemisphereLight("#f4f8ff","#141a20",1.5));
+const key=new THREE.DirectionalLight("#ffffff",2.4);key.position.set(2.5,4,2.5);sc.add(key);
+const rim=new THREE.PointLight("#c8ff00",26,10);rim.position.set(-2.5,2,-2.2);sc.add(rim);
+sc.add(new THREE.GridHelper(8,24,0x1f4a2c,0x12301d));
+
+const loader=new GLTFLoader();
+loader.load("/Xbot.glb",(g)=>{
+  const model=g.scene;sc.add(model);
+  // studio recolor: white surface + graphite joints
+  model.traverse(o=>{if(o.isMesh){
+    const n=(o.material.name||"").toLowerCase();
+    o.material=new THREE.MeshStandardMaterial({
+      color: n.includes("joint")? "#262c34" : "#e7ecf1",
+      roughness: n.includes("joint")? .55 : .38, metalness: .12});
+  }});
+  const mixer=new THREE.AnimationMixer(model);
+  const idle=g.animations.find(c=>/idle/i.test(c.name))||g.animations[0];
+  if(idle){mixer.clipAction(idle).play();mixer.update(.4)}
+  model.updateMatrixWorld(true);
+
+  const bone=(s)=>{let b=null;model.traverse(o=>{if(!b&&o.isBone&&o.name.toLowerCase().includes(s))b=o});return b};
+
+  // curl fingers into a grip
+  const F=["index","middle","ring","pinky"];
+  for(const f of F){for(let i=1;i<=3;i++){
+    const b=bone("righthand"+f+i);if(b)b.rotation.z=-(i===1?CURL.i1:i===2?CURL.i2:CURL.i3);
+  }}
+  const t1=bone("righthandthumb1"),t2=bone("righthandthumb2"),t3=bone("righthandthumb3");
+  if(t1)t1.rotation.x=CURL.th1; if(t2)t2.rotation.z=-CURL.th2; if(t3)t3.rotation.z=-.3;
+
+  // racquet parented to the hand bone
+  const hand=bone("righthand");
+  const racq=new THREE.Group();
+  const frameM=new THREE.MeshStandardMaterial({color:"#c8ff00",roughness:.4,metalness:.15,emissive:"#5d7a00",emissiveIntensity:.25});
+  const darkM=new THREE.MeshStandardMaterial({color:"#22262c",roughness:.5});
+  const h=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.9,22,12),darkM);h.position.y=9;racq.add(h);
+  const th=new THREE.Mesh(new THREE.TorusGeometry(12.5,1.5,12,40),frameM);th.position.y=32;racq.add(th);
+  const st=new THREE.Mesh(new THREE.CircleGeometry(11.4,32),
+    new THREE.MeshBasicMaterial({color:"#eafff1",transparent:true,opacity:.22,side:THREE.DoubleSide}));
+  st.position.y=32;racq.add(st);
+  if(hand){hand.add(racq);racq.position.set(...RQ_POS);racq.rotation.set(...RQ_ROT);
+    if(new URLSearchParams(location.search).has("axes")) hand.add(new THREE.AxesHelper(25))}
+  model.updateMatrixWorld(true);
+
+  // shots
+  const box=new THREE.Box3().setFromObject(model);
+  const c=box.getCenter(new THREE.Vector3());const hgt=box.getSize(new THREE.Vector3()).y;
+  const cam=new THREE.PerspectiveCamera(40,1,0.01,60);
+  const hp=hand?hand.getWorldPosition(new THREE.Vector3()):c;
+  const shots=[
+    {p:[c.x+hgt*.85,c.y+hgt*.22,c.z+hgt*1.2],t:c,n:"STUDIO BODY — белый/графит + лайм"},
+    {p:[hp.x+hgt*.13,hp.y+hgt*.06,hp.z+hgt*.20],t:hp,n:"GRIP MACRO — пальцы на ручке"},
+    {p:[hp.x-hgt*.16,hp.y+hgt*.12,hp.z+hgt*.13],t:hp,n:"GRIP MACRO — тыльная сторона"},
+  ];
+  shots.forEach((s,i)=>{
+    cam.position.set(...s.p);cam.lookAt(s.t);cam.updateProjectionMatrix();
+    renderer.render(sc,cam);
+    const x=PAD+i*(CW+PAD)*1.02,y=30;
+    grid.drawImage(renderer.domElement,x,y,CW,CH);
+    grid.strokeStyle="#1c2230";grid.strokeRect(x,y,CW,CH);label(x,s.n);
+  });
+  document.title="DONE";
+},undefined,(e)=>{grid.fillStyle="#f88";grid.fillText("ERR "+e,20,40)});
+</script></body></html>

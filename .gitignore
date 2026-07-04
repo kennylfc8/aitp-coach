@@ -31,3 +31,12 @@ samples/
 *.mp4
 # Claude Design export duplicate (folder is committed, zip is not)
 \# AI Tennis Coach Terminal.zip
+
+# 3D source assets — heavy originals not used by the app at runtime.
+# The app ships web/public/Ch28w.glb (resized) + web/public/anims/*.glb only.
+3dModels/
+web/public/*.fbx
+web/public/Ch28.glb
+web/public/Brute.glb
+web/public/Xbot.glb
+web/public/RobotExpressive.glb

@@ -23,6 +23,7 @@ export const audioContextState = () => {
 };
 
 // Reuse ONE <audio> element: wawa-lipsync attaches a single Web Audio source per element.
+// Resolves when playback ENDS (so callers can hold "speaking" for the whole reply).
 export function playAudio(src) {
   if (!audioEl) {
     audioEl = new Audio();
@@ -33,7 +34,11 @@ export function playAudio(src) {
   unlockAudio();
   audioEl.src = src;
   audioEl.currentTime = 0;
-  return audioEl.play();
+  return new Promise((resolve) => {
+    audioEl.onended = resolve;
+    audioEl.onerror = resolve;
+    audioEl.play().catch(resolve);
+  });
 }
 
 export const isConnected = () => connected;

@@ -1,0 +1,75 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>body{margin:0;background:#05070a;font-family:monospace;color:#cfd6df}
+#grid{display:block}</style>
+<script type="importmap">{"imports":{
+ "three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+ "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head><body>
+<canvas id="grid" width="1500" height="1060"></canvas>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const CW=480,CH=480,PAD=10;
+const grid=document.getElementById("grid").getContext("2d");
+grid.fillStyle="#05070a";grid.fillRect(0,0,1500,1060);
+const label=(x,y,t)=>{grid.fillStyle="#9aa4b2";grid.font="13px monospace";grid.fillText(t,x+10,y+20)};
+
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(CW,CH);renderer.setPixelRatio(1);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+
+function makeScene(){
+  const sc=new THREE.Scene();sc.background=new THREE.Color("#0a0f14");
+  sc.add(new THREE.HemisphereLight("#eafff1","#0a1a12",1.4));
+  const d=new THREE.DirectionalLight("#ffffff",2.2);d.position.set(2.5,4,2.5);sc.add(d);
+  const rim=new THREE.PointLight("#c8ff00",30,10);rim.position.set(-2.5,2,-2);sc.add(rim);
+  const gridH=new THREE.GridHelper(8,24,0x1f4a2c,0x12301d);sc.add(gridH);
+  return sc;
+}
+const loader=new GLTFLoader();
+const load=(u)=>new Promise((res,rej)=>loader.load(u,res,undefined,rej));
+
+function findBone(root,names){let out=null;
+  root.traverse(o=>{if(out)return;const n=o.name.toLowerCase();
+    if(names.some(x=>n.includes(x)))out=o});return out}
+
+async function shoot(url,poseClip,row,title,handNames){
+  const sc=makeScene();
+  const g=await load(url);
+  const model=g.scene;sc.add(model);
+  // natural pose from idle clip
+  const mixer=new THREE.AnimationMixer(model);
+  const clip=g.animations.find(c=>/idle|stand|wave/i.test(c.name))||g.animations[0];
+  if(clip){mixer.clipAction(clip).play();mixer.update(poseClip)}
+  model.updateMatrixWorld(true);
+  // bounds
+  const box=new THREE.Box3().setFromObject(model);
+  const c=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+  const h=size.y;
+  const cam=new THREE.PerspectiveCamera(42,1,0.01,50);
+  const shots=[];
+  shots.push({p:[c.x+h*0.9,c.y+h*0.25,c.z+h*1.25],t:c,name:"¾ front"});
+  shots.push({p:[c.x-h*1.3,c.y+h*0.15,c.z+h*0.25],t:c,name:"side"});
+  const hand=findBone(model,handNames);
+  if(hand){const hp=hand.getWorldPosition(new THREE.Vector3());
+    shots.push({p:[hp.x+h*0.16,hp.y+h*0.10,hp.z+h*0.22],t:hp,name:"HAND CLOSE-UP ✋"})}
+  else shots.push({p:[c.x,c.y+h*0.5,c.z+h*0.6],t:new THREE.Vector3(c.x,c.y+h*0.4,c.z),name:"upper"});
+  shots.forEach((s,i)=>{
+    cam.position.set(...s.p);cam.lookAt(s.t.x??s.t[0]??0, s.t.y??s.t[1]??0, s.t.z??s.t[2]??0);
+    cam.lookAt(s.t);cam.updateProjectionMatrix();
+    renderer.render(sc,cam);
+    const x=PAD+i*(CW+PAD)*1.02, y=30+row*(CH+56);
+    grid.drawImage(renderer.domElement,x,y,CW,CH);
+    grid.strokeStyle="#1c2230";grid.strokeRect(x,y,CW,CH);
+    label(x,y+CH+8,`${title} — ${s.name}`);
+  });
+}
+(async()=>{
+  try{
+    await shoot("/Xbot.glb",0.4,0,"A · XBOT (спорт-манекен, пальцы ЕСТЬ)",["righthand","hand_r","hand.r"]);
+    await shoot("/RobotExpressive.glb",0.3,1,"B · ROBOT EXPRESSIVE (тун-робот, кисти-варежки)",["handr","hand_r","righthand","hand.r"]);
+    document.title="DONE";
+  }catch(e){grid.fillStyle="#f88";grid.fillText("ERR "+e,20,40);document.title="ERR"}
+})();
+</script></body></html>

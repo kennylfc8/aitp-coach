@@ -1,0 +1,106 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>body{margin:0;background:#05070a;font-family:monospace;color:#cfd6df}</style>
+<script type="importmap">{"imports":{
+ "three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+ "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head><body>
+<canvas id="grid" width="1980" height="560"></canvas>
+<script type="module">
+import * as THREE from "three";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { TGALoader } from "three/addons/loaders/TGALoader.js";
+
+const manager=new THREE.LoadingManager();
+manager.addHandler(/\.tga$/i,new TGALoader()); // Mixamo nonPBR textures are TGA
+
+const Q=new URLSearchParams(location.search);
+const FILE="/"+(Q.get("m")||"Ch28.fbx");
+
+const CW=480,CH=480,PAD=10;
+const grid=document.getElementById("grid").getContext("2d");
+grid.fillStyle="#05070a";grid.fillRect(0,0,1980,560);
+const label=(x,t)=>{grid.fillStyle="#9aa4b2";grid.font="13px monospace";grid.fillText(t,x+10,30+CH+18)};
+
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(CW,CH);renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.5;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+const sc=new THREE.Scene();sc.background=new THREE.Color("#10161d");
+sc.add(new THREE.HemisphereLight("#ffffff","#2a3138",2.4));
+const key=new THREE.DirectionalLight("#ffffff",3.6);key.position.set(2.5,4,2.5);sc.add(key);
+const fill=new THREE.DirectionalLight("#cfe0f0",1.6);fill.position.set(-3,2,1.5);sc.add(fill);
+const rim=new THREE.PointLight("#c8ff00",18,12);rim.position.set(-2.5,2.2,-2.4);sc.add(rim);
+sc.add(new THREE.GridHelper(8,24,0x1f4a2c,0x12301d));
+
+const isGLB=FILE.toLowerCase().endsWith(".glb");
+const onLoaded=(model)=>{
+  // materials: report + fix (Mixamo FBX often lands black in three)
+  const report=[];
+  const BASIC=Q.has("basic");
+  const fix=(m,uvOk)=>{
+    const has=!!m.map;
+    report.push(`${m.name||'mat'} map:${has} uv:${uvOk}`);
+    if(BASIC){const b=new THREE.MeshBasicMaterial();if(has){b.map=m.map;b.map.colorSpace=THREE.SRGBColorSpace}else b.color.set('#f0a');return b;}
+    const n=(m.name||'').toLowerCase();
+    const out=new THREE.MeshStandardMaterial({roughness:.7,metalness:.05});
+    if(has){out.map=m.map;out.map.colorSpace=THREE.SRGBColorSpace;out.color.set('#ffffff');}
+    else out.color.set(n.includes('hair')?'#3a2e26':n.includes('skin')||n.includes('body')?'#e8b48e':
+      n.includes('bottom')||n.includes('pant')?'#2a3140':n.includes('shoe')?'#f0f2f4':'#7ac0a8');
+    if(m.transparent&&m.opacity<.9){out.transparent=true;out.opacity=m.opacity;}
+    if(n.includes('hair')||n.includes('lash')||n.includes('brow')||m.alphaMap){ // lashes/hair alpha cards
+      out.transparent=true;out.alphaTest=.35;out.side=THREE.DoubleSide;if(m.alphaMap)out.alphaMap=m.alphaMap;}
+    return out;
+  };
+  model.traverse(o=>{if(o.isMesh){const uvOk=!!(o.geometry&&o.geometry.attributes&&o.geometry.attributes.uv);
+    if(isGLB){const ms=Array.isArray(o.material)?o.material:[o.material];
+      for(const m of ms){report.push(`${m.name||'mat'} map:${!!m.map} uv:${uvOk}`);
+        if((m.name||'').toLowerCase().match(/lash|brow|hair/)){m.transparent=true;m.alphaTest=.35;m.side=THREE.DoubleSide}}}
+    else o.material=Array.isArray(o.material)?o.material.map(m=>fix(m,uvOk)):fix(o.material,uvOk);
+    o.castShadow=o.receiveShadow=false;}});
+  grid.fillStyle="#6b7682";grid.font="11px monospace";
+  grid.fillText(report.slice(0,6).join("  |  ").slice(0,240),10,552);
+  // draw the raw diffuse textures as thumbnails AFTER the shots (setTimeout → on top)
+  setTimeout(()=>{const seen=new Set();let tx=14;
+    model.traverse(o=>{if(o.isMesh){const ms=Array.isArray(o.material)?o.material:[o.material];
+      for(const m of ms){if(m.map&&m.map.image&&!seen.has(m.map.uuid)){seen.add(m.map.uuid);
+        try{grid.drawImage(m.map.image,tx,400,100,100);grid.strokeStyle="#c8ff00";grid.strokeRect(tx,400,100,100);tx+=106}catch(e){}}}}})},300);
+  // Mixamo FBX is cm-scale → normalize to ~1.8m height
+  let box=new THREE.Box3().setFromObject(model);
+  const h0=box.getSize(new THREE.Vector3()).y;
+  model.scale.setScalar(1.8/h0);
+  model.updateMatrixWorld(true);
+  box=new THREE.Box3().setFromObject(model);
+  const min=box.min; model.position.y-=min.y; model.updateMatrixWorld(true);
+  sc.add(model);
+
+  box=new THREE.Box3().setFromObject(model);
+  const c=box.getCenter(new THREE.Vector3()),hgt=box.getSize(new THREE.Vector3()).y;
+  let hand=null,headB=null;
+  model.traverse(o=>{const n=o.name.toLowerCase();
+    if(!hand&&o.isBone&&n.includes("righthand")&&!n.match(/thumb|index|middle|ring|pinky/))hand=o;
+    if(!headB&&o.isBone&&n.endsWith("head"))headB=o});
+  const hp=hand?hand.getWorldPosition(new THREE.Vector3()):c;
+  const fp=headB?headB.getWorldPosition(new THREE.Vector3()):new THREE.Vector3(c.x,c.y+hgt*.4,c.z);
+
+  const cam=new THREE.PerspectiveCamera(40,1,0.01,60);
+  const shots=[
+    {p:[c.x+hgt*.85,c.y+hgt*.22,c.z+hgt*1.15],t:c,n:"¾ front"},
+    {p:[c.x-hgt*1.25,c.y+hgt*.12,c.z+hgt*.3],t:c,n:"side"},
+    {p:[hp.x+hgt*.12,hp.y+hgt*.05,hp.z+hgt*.18],t:hp,n:"HAND — пальцы"},
+    {p:[fp.x+hgt*.16,fp.y+hgt*.03,fp.z+hgt*.26],t:fp,n:"HEAD close-up"},
+  ];
+  shots.forEach((s,i)=>{
+    cam.position.set(...s.p);cam.lookAt(s.t);cam.updateProjectionMatrix();
+    renderer.render(sc,cam);
+    const x=PAD+i*(CW+PAD),y=30;
+    grid.drawImage(renderer.domElement,x,y,CW,CH);
+    grid.strokeStyle="#1c2230";grid.strokeRect(x,y,CW,CH);label(x,`${FILE.slice(1)} — ${s.n}`);
+  });
+  document.title="DONE";
+};
+const onErr=(e)=>{grid.fillStyle="#f88";grid.fillText("ERR "+e,20,40);document.title="ERR"};
+if(isGLB) new GLTFLoader(manager).load(FILE,(g)=>onLoaded(g.scene),undefined,onErr);
+else new FBXLoader(manager).load(FILE,onLoaded,undefined,onErr);
+</script></body></html>
