@@ -11,10 +11,15 @@ Docs: http://localhost:8000/docs  (auto Swagger)
 import os
 import json
 import time
+import base64
+import asyncio
+import subprocess
+import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
 
 LOG_FILE = Path(__file__).parent / "web_debug.log"
+RHUBARB = Path(__file__).parent / "tools" / "Rhubarb-Lip-Sync-1.14.0-Windows" / "rhubarb.exe"
 
 # Load .env BEFORE importing the coach modules (they build clients at import time)
 from dotenv import load_dotenv
@@ -132,22 +137,60 @@ def chat(body: ChatIn):
     return {"reply": reply}
 
 
+def rhubarb_cues(audio: bytes, dialog_text: str) -> list:
+    """WAV/OGG bytes -> Rhubarb mouth-shape timeline [[start, shape], ...].
+    'phonetic' recognizer: language-agnostic (our replies are often RU).
+    Returns [] on any failure — the web falls back to realtime FFT lipsync."""
+    if not RHUBARB.exists() or audio[:4] not in (b"RIFF", b"OggS"):
+        return []
+    ext = ".wav" if audio[:4] == b"RIFF" else ".ogg"
+    tmp = out_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
+            f.write(audio)
+            tmp = f.name
+        out_path = tmp + ".json"
+        # NB: rhubarb's stdout comes up empty when piped on Windows — use -o file
+        cmd = [str(RHUBARB), "-r", "phonetic", "-f", "json", "-q",
+               "--extendedShapes", "GHX", "-o", out_path, tmp]
+        out = subprocess.run(cmd, capture_output=True, timeout=60)
+        if out.returncode != 0:
+            print("[rhubarb]", out.stderr.decode(errors="replace")[:300])
+            return []
+        with open(out_path, encoding="utf-8") as f:
+            data = json.load(f)
+        return [[round(c["start"], 3), c["value"]] for c in data.get("mouthCues", [])]
+    except Exception as e:
+        print("[rhubarb]", e)
+        return []
+    finally:
+        for p in (tmp, out_path):
+            if p:
+                try: os.unlink(p)
+                except OSError: pass
+
+
 @app.post("/tts")
 async def tts(body: TTSIn):
-    """Text -> speech audio bytes (OpenAI by default; MiniMax/ElevenLabs if keyed)."""
+    """Text -> JSON {audio: base64, media, cues}. Cues = Rhubarb phoneme-timed mouth
+    shapes for accurate lipsync; empty cues -> browser uses realtime FFT fallback."""
     audio = await generate_speech(body.text, "EN")
     if not audio:
         return Response(status_code=503, content=b"")
     head = audio[:4]
     media = "audio/ogg" if head == b"OggS" else "audio/wav" if head == b"RIFF" else "audio/mpeg"
     provider = "replicate-CLONE" if head == b"RIFF" else "openai-FALLBACK"
+    t0 = time.time()
+    cues = await asyncio.to_thread(rhubarb_cues, audio, body.text)
+    rb_ms = int((time.time() - t0) * 1000)
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(json.dumps(
                 {"ts": datetime.now().strftime("%H:%M:%S"), "event": "tts-provider",
-                 "data": {"provider": provider, "media": media, "bytes": len(audio)}},
+                 "data": {"provider": provider, "media": media, "bytes": len(audio),
+                          "cues": len(cues), "rhubarb_ms": rb_ms}},
                 ensure_ascii=False) + "\n")
     except Exception:
         pass
-    print(f"[TTS] served by {provider} ({media}, {len(audio)}b)")
-    return Response(content=audio, media_type=media)
+    print(f"[TTS] served by {provider} ({media}, {len(audio)}b, {len(cues)} cues in {rb_ms}ms)")
+    return {"audio": base64.b64encode(audio).decode(), "media": media, "cues": cues}

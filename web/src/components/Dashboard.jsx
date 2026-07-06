@@ -1,6 +1,7 @@
-// Terminal Pro right panel: PLAYER.RATING / TODAY.SESSION / WEAK.ZONES / SKILL.MATRIX.
+// Terminal Pro right panel: PLAYER.RATING / TODAY.SESSION / DEMO.LAB / WEAK.ZONES / SKILL.MATRIX.
 // Real data from GET /player (deterministic, no LLM). ASCII meters per the handoff spec.
 import { useEffect, useState } from "react";
+import DemoLab from "./DemoLab";
 
 const API = "http://localhost:8000";
 
@@ -66,6 +67,9 @@ export default function Dashboard({ data }) {
           </div>
         ))}
       </div>
+
+      {/* DEMO.LAB — technique player */}
+      <DemoLab />
 
       {/* WEAK.ZONES */}
       <div className="mod weak">

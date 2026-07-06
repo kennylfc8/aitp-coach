@@ -16,6 +16,7 @@ export const CLIPS = {
   walk: "walking", run: "running", jump: "jump",
   golf: "golf_drive", pitch: "baseball_pitching", throw: "throw_object",
   dance: "hip_hop_dancing", backflip: "backflip", drink: "drinking",
+  rtest: "rtest", // retarget pilot: Quaternius Sword_Attack baked via tools/retarget
 };
 
 const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -35,7 +36,10 @@ function loadRaw(file) {
 }
 
 // Build a clip whose tracks point at THIS skeleton's bone names.
-export async function getClipFor(name, boneIndex /* Map<normName, actualName> */) {
+// hipsRestY: target rig's hips rest height in ITS local units. Mixamo clips are baked
+// in cm (hips ~100); a meters-scale rig (Avaturn ~0.95) needs hips position tracks
+// rescaled, otherwise the character launches ~100 units into the sky.
+export async function getClipFor(name, boneIndex /* Map<normName, actualName> */, hipsRestY) {
   const file = CLIPS[name];
   if (!file) throw new Error("unknown clip " + name);
   const src = await loadRaw(file);
@@ -54,9 +58,23 @@ export async function getClipFor(name, boneIndex /* Map<normName, actualName> */
     if (!dst) continue;
     const t2 = tr.clone();
     t2.name = `${dst}.${prop}`;
+    if (prop === "position") {
+      // All source clips share one Mixamo rig whose rest hips sit at ~0.96 (meters,
+      // measured from idle.glb). Scale hips motion by target-rest/source-rest — NOT by
+      // the clip's first frame, which lies for clips that start seated/crouched.
+      const SRC_HIPS_REST = 0.96;
+      const s = hipsRestY ? Math.abs(hipsRestY) / SRC_HIPS_REST : 1;
+      if (Math.abs(s - 1) > 0.02) t2.values = Float32Array.from(tr.values, (v) => v * s);
+    }
     tracks.push(t2);
   }
   return new THREE.AnimationClip(name, src.duration, tracks);
+}
+
+export function getHipsRestY(root) {
+  let y = 0;
+  root.traverse((o) => { if (o.isBone && /hips$/i.test(o.name)) y = o.position.y; });
+  return y;
 }
 
 export function buildBoneIndex(root) {

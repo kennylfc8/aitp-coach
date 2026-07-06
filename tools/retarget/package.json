@@ -1,0 +1,9 @@
+{
+  "name": "aitp-retarget",
+  "private": true,
+  "type": "module",
+  "description": "Bakes foreign-rig animation clips onto the Avaturn coach skeleton (SkeletonUtils.retargetClip).",
+  "dependencies": {
+    "three": "^0.184.0"
+  }
+}

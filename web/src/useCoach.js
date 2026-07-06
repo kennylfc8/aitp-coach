@@ -1,7 +1,7 @@
 // Chat + voice brain, lifted out of the old Controls so the transcript (coach viewport)
 // and the command line (bottom) can share one source of truth.
 import { useState, useRef, useEffect } from "react";
-import { playAudio, unlockAudio, audioContextState } from "./lipsync";
+import { playAudio, unlockAudio, audioContextState, setCues } from "./lipsync";
 
 const API = "http://localhost:8000";
 const SR = typeof window !== "undefined"
@@ -62,7 +62,14 @@ export function useCoach() {
       setSpeaking(true);
       const t = await fetch(`${API}/tts`, { method: "POST",
         headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: data.reply }) });
-      if (t.ok) { await playAudio(URL.createObjectURL(await t.blob())); dlog("audio-played", { ctx: audioContextState() }); }
+      if (t.ok) {
+        const tj = await t.json(); // { audio: base64, media, cues }
+        const bytes = Uint8Array.from(atob(tj.audio), (c) => c.charCodeAt(0));
+        setCues(tj.cues || []);
+        const url = URL.createObjectURL(new Blob([bytes], { type: tj.media || "audio/wav" }));
+        await playAudio(url);
+        dlog("audio-played", { ctx: audioContextState(), cues: (tj.cues || []).length });
+      }
     } catch (e) {
       dlog("send-error", { message: String((e && e.message) || e) });
       setTranscript("⚠️ Backend offline — is server.py running on :8000?");

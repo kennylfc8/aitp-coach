@@ -116,7 +116,8 @@ body { background:var(--page); color:var(--soft);
 .tcode { color:var(--dim); font-size:11px; }
 
 /* ============ right panel ============ */
-.panel { flex:0 0 442px; display:flex; flex-direction:column; gap:12px; min-height:0; }
+.panel { flex:0 0 442px; display:flex; flex-direction:column; gap:12px; min-height:0;
+  overflow-y:auto; scrollbar-width:thin; scrollbar-color:#1f4a2c transparent; }
 .mod { position:relative; border:1px solid var(--b); background:var(--fill); border-radius:2px; padding:13px 14px; }
 .mod .cor { width:11px; height:11px; border-width:1px; }
 .mod .cor.tl{border-top:1px solid var(--grn);border-left:1px solid var(--grn)}

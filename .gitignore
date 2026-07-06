@@ -40,3 +40,10 @@ web/public/Ch28.glb
 web/public/Brute.glb
 web/public/Xbot.glb
 web/public/RobotExpressive.glb
+
+# Rhubarb Lip Sync CLI (3rd-party binary + sphinx models, ~30MB) — download:
+# https://github.com/DanielSWolf/rhubarb-lip-sync/releases -> extract into tools/
+# (tools/* + negation: our own tools/retarget stays in git, 3rd-party dumps don't)
+tools/*
+!tools/retarget/
+tools/retarget/node_modules/

@@ -1,9 +1,13 @@
-// Center stage: TOON ATHLETE — stylized game-style player with readable anatomy
-// (shoulders/elbows/knees), driven by our real mocap serve. R3F, lazy chunk.
+// Center stage: the 3D coach (Avaturn T2 — live face: lipsync + blink; ?char=ch28 legacy).
+// R3F, lazy chunk.
 import { lazy, Suspense } from "react";
 
 const CoachChar3D = lazy(() => import("./CoachChar3D"));
 const BARS = Array.from({ length: 52 });
+const IS_CH28 = typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("char") === "ch28";
+const COACH_TAG = IS_CH28 ? "CH28.PRO" : "AVATURN.T2";
+const RIG_TAG = IS_CH28 ? "body+fingers" : "body+fingers+face";
 
 export default function CoachViewport({ transcript, speaking, recording }) {
   return (
@@ -12,8 +16,8 @@ export default function CoachViewport({ transcript, speaking, recording }) {
 
       <div className="vstatus">
         <span>
-          &gt; render: <span className="grn">live</span> · coach: <span className="lime">CH28.PRO</span> · rig:{" "}
-          <span className="white">full+fingers</span> · lipsync: <span className="lime">{speaking ? "on" : "idle"}</span>
+          &gt; render: <span className="grn">live</span> · coach: <span className="lime">{COACH_TAG}</span> · rig:{" "}
+          <span className="white">{RIG_TAG}</span> · lipsync: <span className="lime">{speaking ? "on" : "idle"}</span>
         </span>
         <span className="agent">COACH.AGENT — v3.1 █</span>
       </div>
@@ -24,7 +28,7 @@ export default function CoachViewport({ transcript, speaking, recording }) {
         </Suspense>
         <span className="reticle tl">+</span>
         <span className="reticle tr">+</span>
-        <span className="reticle bl">SERVE.LOOP · drag to orbit ▌</span>
+        <span className="reticle bl">COACH.CAM · drag to orbit ▌</span>
       </div>
 
       <div className="transcript">
