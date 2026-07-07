@@ -4,6 +4,9 @@
 > DETAILED_ASSESSMENT, …) describe an OLD 15-question assessment and are **stale**.
 > This file + `git log` reflect reality. Repo: github.com/kennylfc8/aitp-coach (remote `origin`;
 > `gitlab` = backup). Run on Windows; Python 3.12 via `py -3.12`. Secrets in `.env` (gitignored).
+>
+> **Новый комп / перенос:** см. `SETUP.md` — что скачать и что забрать вручную
+> (`.env`, `data/players/`, Rhubarb) помимо `git clone`.
 
 ## Two apps in one repo
 1. **Telegram bot** (Python / aiogram) — root `src/`. The working product.

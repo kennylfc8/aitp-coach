@@ -7,11 +7,13 @@
 // Right-hand fingers stay curled on the racquet (clip tracks for them are filtered out).
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Grid, ContactShadows, useGLTF } from "@react-three/drei";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import * as THREE from "three";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getClipFor, buildBoneIndex, getHipsRestY, gestureFor } from "../coachAnims";
 import { lipsyncManager, hasCues, cueAt, audioTime } from "../lipsync";
-import { demo } from "../demoBus";
+import { demo, DEMO_MOVES, GRIPS } from "../demoBus";
+import CourtEnv, { THEMES } from "./CourtEnv";
 
 // ch28 finger curls: local-euler deltas tuned by eye (that rig curls around local Z)
 const CURL = { f1: 0.95, f2: 1.05, f3: 0.75, t1x: 0.5, t2z: -0.55, t3z: -0.3 };
@@ -64,7 +66,7 @@ const RQ_ROT = [-1.57, 0, 0];
 //   handle axis  = across the fist, pinky knuckle -> index knuckle (head on the thumb side)
 //   face normal  = palm normal, sign resolved toward the grip center
 // Fine-tune via URL: ?rqa=(deg twist around handle) ?rqox/rqoy/rqoz=(cm offsets)
-function fitRacquetToHand(scene, bones, rq) {
+function fitRacquetToHand(scene, bones, rq, gripName) {
   const { rHand, index1, pinky1, middle1, middle2, middle3 } = bones;
   if (!rHand || !index1 || !pinky1 || !middle1 || !middle2 || !middle3) return;
   scene.updateMatrixWorld(true);
@@ -95,8 +97,9 @@ function fitRacquetToHand(scene, bones, rq) {
   const ortho = new THREE.Vector3().crossVectors(handleDir, normalT).normalize();
   const basis = new THREE.Matrix4().makeBasis(ortho, handleDir, normalT); // rq: +Y handle, +Z face
   const qWorld = new THREE.Quaternion().setFromRotationMatrix(basis);
-  // twist around the handle for grip taste (default 0 = strings parallel to palm)
-  const twist = (parseFloat(FLAGS.get("rqa")) || 0) * Math.PI / 180;
+  // twist around the handle: grip preset (bevel) + optional URL fine-tune
+  const grip = GRIPS[gripName] || GRIPS.continental;
+  const twist = ((parseFloat(FLAGS.get("rqa")) || 0) + grip.twist) * Math.PI / 180;
   if (twist) qWorld.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), twist));
   const qHand = rHand.getWorldQuaternion(new THREE.Quaternion()).invert();
   rq.quaternion.copy(qHand).multiply(qWorld);
@@ -156,6 +159,7 @@ function Char({ speaking, transcript }) {
         const put = (k) => { if (!bones[k]) bones[k] = o; };
         if (n.endsWith("righthand")) put("rHand");
         if (n.endsWith("neck")) put("neck"); // GRIP.CAM anchor: keeps the closeup outside the body
+        if (n === "head") put("head");       // sport-fit cap anchor
         for (const f of ["index", "middle", "ring", "pinky"])
           for (let i = 1; i <= 3; i++) if (n.endsWith("righthand" + f + i)) put(f + i);
         for (let i = 1; i <= 3; i++) if (n.endsWith("righthandthumb" + i)) put("thumb" + i);
@@ -211,52 +215,121 @@ function Char({ speaking, transcript }) {
       const rq = new THREE.Group(); rq.name = "racq";
       const frameMat = new THREE.MeshStandardMaterial({ color: "#17191d", roughness: 0.35, metalness: 0.5 });
       const limeMat = new THREE.MeshStandardMaterial({ color: "#c8ff00", roughness: 0.45, metalness: 0.15, emissive: "#3d5500", emissiveIntensity: 0.4 });
-      const gripMat = new THREE.MeshStandardMaterial({ color: "#26292f", roughness: 0.95 });
-
-      // octagonal grip + butt cap
-      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.0165, 0.018, 0.19, 8), gripMat);
-      grip.position.y = 0.1; rq.add(grip);
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.0192, 0.0192, 0.014, 8), limeMat);
-      cap.position.y = 0.007; rq.add(cap);
-
-      // shaft up to the throat split
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.0135, 0.07, 10), frameMat);
-      shaft.position.y = 0.23; rq.add(shaft);
-
-      // elliptical hoop (real heads are ~26x33cm, never round)
-      const RXh = 0.112, RYh = 0.142, HOOP_Y = 0.43;
-      class EllCurve extends THREE.Curve {
-        constructor(rx, ry) { super(); this.rx = rx; this.ry = ry; }
-        getPoint(t) { const a = t * Math.PI * 2;
-          return new THREE.Vector3(Math.cos(a) * this.rx, Math.sin(a) * this.ry, 0); }
+      // pro handle: CRISP octagon bevels (flat shading — smoothed normals read
+      // as a round sausage) + spiral overgrip texture, like an ATP overwrap
+      const og = document.createElement("canvas"); og.width = og.height = 128;
+      const c2 = og.getContext("2d");
+      c2.fillStyle = "#2a2d33"; c2.fillRect(0, 0, 128, 128);
+      c2.strokeStyle = "rgba(255,255,255,0.12)"; c2.lineWidth = 6;
+      for (let i = -128; i < 256; i += 24) {
+        c2.beginPath(); c2.moveTo(i, 128); c2.lineTo(i + 128, 0); c2.stroke();
       }
-      const hoop = new THREE.Mesh(new THREE.TubeGeometry(new EllCurve(RXh, RYh), 72, 0.0105, 10, true), frameMat);
+      c2.strokeStyle = "rgba(0,0,0,0.35)"; c2.lineWidth = 2;
+      for (let i = -128; i < 256; i += 24) {
+        c2.beginPath(); c2.moveTo(i + 7, 128); c2.lineTo(i + 135, 0); c2.stroke();
+      }
+      const gripTex = new THREE.CanvasTexture(og);
+      gripTex.wrapS = gripTex.wrapT = THREE.RepeatWrapping; gripTex.repeat.set(3, 3);
+      const gripMat = new THREE.MeshStandardMaterial({ map: gripTex, roughness: 0.92, flatShading: true });
+
+      // bevel #1 flat faces the string plane (+Z): thetaStart -π/8 centers a facet there
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.0165, 0.018, 0.19, 8, 1, false, -Math.PI / 8), gripMat);
+      grip.position.y = 0.105; rq.add(grip);
+      // flared butt cap (wider than the handle, like a real racquet) + end sticker
+      const capMat = new THREE.MeshStandardMaterial({ color: "#17191d", roughness: 0.5, flatShading: true });
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.0195, 0.021, 0.016, 8, 1, false, -Math.PI / 8), capMat);
+      cap.position.y = 0.008; rq.add(cap);
+      const stick = document.createElement("canvas"); stick.width = stick.height = 64;
+      const c3 = stick.getContext("2d");
+      c3.fillStyle = "#17191d"; c3.beginPath(); c3.arc(32, 32, 32, 0, 7); c3.fill();
+      c3.strokeStyle = "#c8ff00"; c3.lineWidth = 5; c3.beginPath(); c3.arc(32, 32, 26, 0, 7); c3.stroke();
+      c3.fillStyle = "#c8ff00"; c3.font = "bold 18px monospace"; c3.textAlign = "center"; c3.textBaseline = "middle";
+      c3.fillText("ACE", 32, 33);
+      const sticker = new THREE.Mesh(new THREE.CircleGeometry(0.0185, 24),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(stick) }));
+      sticker.rotation.x = Math.PI / 2; sticker.position.y = -0.0002; rq.add(sticker);
+      // collar where the overgrip ends and the shaft begins (lime accent ring)
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.0135, 0.0172, 0.018, 8, 1, false, -Math.PI / 8), limeMat);
+      collar.position.y = 0.207; rq.add(collar);
+
+      // ---- PRO FRAME: modern ATP geometry (averaged Blade/Pure-Aero/Speed) ----
+      // superellipse head (boxier top than an ellipse), aero BEAM cross-section
+      // (deep across the string plane, thin in-plane), lime gloss paint
+      const paintMat = new THREE.MeshPhysicalMaterial({
+        color: "#a4e400", metalness: 0.2, roughness: 0.3,
+        clearcoat: 0.8, clearcoatRoughness: 0.25, emissive: "#1d2a00", emissiveIntensity: 0.3 });
+      const blackMat = new THREE.MeshStandardMaterial({ color: "#101216", roughness: 0.5, metalness: 0.3 });
+      const SE_N = 2.5, RXh = 0.124, RYh = 0.156, HOOP_Y = 0.5; // 100in² head, 27in total
+      const sePoint = (a) => {
+        const c = Math.cos(a), s = Math.sin(a), p = 2 / SE_N;
+        return new THREE.Vector3(RXh * Math.sign(c) * Math.abs(c) ** p,
+          RYh * Math.sign(s) * Math.abs(s) ** p, 0);
+      };
+      class SEArc extends THREE.Curve {
+        constructor(a0 = 0, a1 = Math.PI * 2) { super(); this.a0 = a0; this.a1 = a1; }
+        getPoint(t) { return sePoint(this.a0 + (this.a1 - this.a0) * t); }
+      }
+      const beam = new THREE.Shape();      // cross-section: 23mm deep × 12mm in-plane
+      beam.absellipse(0, 0, 0.006, 0.0115, 0, Math.PI * 2);
+      const hoop = new THREE.Mesh(new THREE.ExtrudeGeometry(beam, {
+        extrudePath: new SEArc(), steps: 140, curveSegments: 12 }), paintMat);
       hoop.position.y = HOOP_Y; rq.add(hoop);
-      const rim = new THREE.Mesh(new THREE.TubeGeometry(new EllCurve(RXh - 0.0075, RYh - 0.0075), 72, 0.0035, 8, true), limeMat);
-      rim.position.y = HOOP_Y; rq.add(rim);
-
-      // V-throat: two arms from the shaft top to the lower hoop
-      const armFrom = new THREE.Vector3(0, 0.265, 0);
-      for (const sx of [-1, 1]) {
-        const armTo = new THREE.Vector3(sx * 0.078, 0.335, 0);
-        const dir = armTo.clone().sub(armFrom);
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0105, dir.length(), 8), frameMat);
-        arm.position.copy(armFrom).addScaledVector(dir, 0.5);
-        arm.rotation.z = -Math.atan2(dir.x, dir.y);
-        rq.add(arm);
+      // bumper guard: black cap on the outer edge, 10-to-2 o'clock
+      const bumpShape = new THREE.Shape();
+      bumpShape.absellipse(0, 0, 0.0045, 0.0128, 0, Math.PI * 2);
+      const bumper = new THREE.Mesh(new THREE.ExtrudeGeometry(bumpShape, {
+        extrudePath: new SEArc(Math.PI * 0.3, Math.PI * 0.7), steps: 40, curveSegments: 10 }), blackMat);
+      bumper.position.y = HOOP_Y; rq.add(bumper);
+      // shaft: single lime beam from the collar up to the throat split
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.0115, 0.0135, 0.075, 12), paintMat);
+      shaft.position.y = 0.253; rq.add(shaft);
+      // open throat: two beams sweeping from the shaft top INTO the hoop (~5 & 7 o'clock)
+      const joinA = 1.25 * Math.PI, joinB = 1.75 * Math.PI; // superellipse angles
+      for (const [aJoin, sx] of [[joinA, -1], [joinB, 1]]) {
+        const j = sePoint(aJoin).add(new THREE.Vector3(0, HOOP_Y, 0));
+        const path = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0, 0.283, 0),
+          new THREE.Vector3(sx * 0.028, 0.315, 0),
+          new THREE.Vector3(j.x * 0.94, j.y - 0.012, 0),
+          j,
+        ]);
+        const armGeo = new THREE.ExtrudeGeometry(beam, { extrudePath: path, steps: 32, curveSegments: 10 });
+        rq.add(new THREE.Mesh(armGeo, paintMat));
       }
+      // yoke: straight black bridge closing the throat between the join points
+      const yA = sePoint(joinA).add(new THREE.Vector3(0, HOOP_Y, 0));
+      const yB = sePoint(joinB).add(new THREE.Vector3(0, HOOP_Y, 0));
+      const yokeShape = new THREE.Shape();
+      yokeShape.absellipse(0, 0, 0.0055, 0.0105, 0, Math.PI * 2);
+      const yoke = new THREE.Mesh(new THREE.ExtrudeGeometry(yokeShape, {
+        extrudePath: new THREE.LineCurve3(yA, yB), steps: 2, curveSegments: 10 }), blackMat);
+      rq.add(yoke);
 
-      // strings: crisp grid texture on an elliptical plane
-      const sc = document.createElement("canvas"); sc.width = sc.height = 256;
+      // strings: 16×19 pattern, thin, slight sheen + lime stencil in the center
+      const sc = document.createElement("canvas"); sc.width = sc.height = 512;
       const sg = sc.getContext("2d");
-      sg.strokeStyle = "rgba(235,240,244,0.92)"; sg.lineWidth = 1.4;
-      for (let i = 1; i < 15; i++) { const x = (i / 15) * 256;
-        sg.beginPath(); sg.moveTo(x, 0); sg.lineTo(x, 256); sg.stroke(); }
-      for (let i = 1; i < 18; i++) { const y = (i / 18) * 256;
-        sg.beginPath(); sg.moveTo(0, y); sg.lineTo(256, y); sg.stroke(); }
+      sg.strokeStyle = "rgba(238,242,246,0.9)"; sg.lineWidth = 1.6;
+      for (let i = 1; i < 16; i++) { const x = (i / 16) * 512;
+        sg.beginPath(); sg.moveTo(x, 0); sg.lineTo(x, 512); sg.stroke(); }
+      for (let i = 1; i < 19; i++) { const y = (i / 19) * 512;
+        sg.beginPath(); sg.moveTo(0, y); sg.lineTo(512, y); sg.stroke(); }
+      sg.strokeStyle = "rgba(168,228,0,0.5)"; sg.lineWidth = 10; sg.lineCap = "round";
+      sg.beginPath(); sg.moveTo(196, 320); sg.lineTo(256, 190); sg.lineTo(316, 320); sg.stroke();
+      sg.beginPath(); sg.moveTo(222, 272); sg.lineTo(290, 272); sg.stroke(); // stencil "A"
       const strTex = new THREE.CanvasTexture(sc);
-      const strGeo = new THREE.CircleGeometry(1, 48);
-      strGeo.scale(RXh - 0.009, RYh - 0.009, 1);
+      // string plane clipped by the superellipse (shape geometry, not a circle)
+      const strShape = new THREE.Shape();
+      const pts = [];
+      for (let i = 0; i <= 64; i++) { const p = sePoint((i / 64) * Math.PI * 2); pts.push(new THREE.Vector2(p.x * 0.945, p.y * 0.945)); }
+      strShape.setFromPoints(pts);
+      const strGeo = new THREE.ShapeGeometry(strShape, 24);
+      // map UVs to the shape bounds so the grid fills the head
+      strGeo.computeBoundingBox();
+      const bb = strGeo.boundingBox, uv = strGeo.attributes.uv, pos = strGeo.attributes.position;
+      for (let i = 0; i < uv.count; i++) {
+        uv.setXY(i, (pos.getX(i) - bb.min.x) / (bb.max.x - bb.min.x),
+          (pos.getY(i) - bb.min.y) / (bb.max.y - bb.min.y));
+      }
       const strings = new THREE.Mesh(strGeo, new THREE.MeshBasicMaterial({
         map: strTex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
       strings.position.y = HOOP_Y; rq.add(strings);
@@ -268,9 +341,57 @@ function Char({ speaking, transcript }) {
       }
       bones.rHand.add(rq);
     }
+    // sport-fit accessories (?fit=sport): real snapback model (backwards) + sport
+    // wraparound shades. Outfit meshes (tank/shorts/sneakers) arrive with the
+    // re-exported avatar — Avaturn culls body geometry under clothes.
+    if (FLAGS.get("fit") === "sport" && bones.head && !bones.head.getObjectByName("cap")) {
+      // head-bone local axes are rig-specific: derive world up/back at bind pose
+      scene.updateMatrixWorld(true);
+      const qh = bones.head.getWorldQuaternion(new THREE.Quaternion()).invert();
+      const upL = new THREE.Vector3(0, 1, 0).applyQuaternion(qh).normalize();
+      const backL = new THREE.Vector3(0, 0, -1).applyQuaternion(qh)
+        .projectOnPlane(upL).normalize();
+      const xL = new THREE.Vector3().crossVectors(upL, backL.clone().negate()).normalize();
+      const qAlign = new THREE.Quaternion().setFromRotationMatrix(
+        new THREE.Matrix4().makeBasis(xL, upL, backL.clone().negate()));
+      // hide the office glasses and the man-bun (Head_Mesh texture keeps the
+      // shaved-sides shading under the cap)
+      scene.traverse((o) => {
+        if (o.isMesh && /avaturn_hair|avaturn_glasses/.test(o.name)) o.visible = false;
+      });
+      // snapback worn backwards: dome (fits the measured skull) + a STRAIGHT
+      // rectangular visor with parallel sides pointing back — per the boss's spec
+      const capHolder = new THREE.Group(); capHolder.name = "cap";
+      capHolder.quaternion.copy(qAlign);
+      capHolder.position.copy(upL.clone().multiplyScalar(0.128)).addScaledVector(backL, -0.014);
+      bones.head.add(capHolder);
+      const capMat = new THREE.MeshStandardMaterial({ color: "#101216", roughness: 0.85 });
+      const limeMat = new THREE.MeshStandardMaterial({ color: "#c8ff00", roughness: 0.5, emissive: "#2c3d00", emissiveIntensity: 0.35 });
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.124, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2), capMat);
+      dome.scale.y = 0.88; capHolder.add(dome);
+      const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.007, 12), limeMat);
+      btn.position.y = 0.098; capHolder.add(btn);
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.104, 0.007, 0.15), capMat);
+      visor.position.set(0, 0.012, -0.17); visor.rotation.x = -0.14; capHolder.add(visor);
+      // sport shades: smooth wraparound shield + temples (procedural, gloss black)
+      const shades = new THREE.Group(); shades.name = "shades";
+      const lensMat = new THREE.MeshStandardMaterial({ color: "#06080d", metalness: 0.8, roughness: 0.08, emissive: "#101c28", emissiveIntensity: 0.45, side: THREE.DoubleSide });
+      const shield = new THREE.Mesh(
+        new THREE.SphereGeometry(0.09, 36, 10, Math.PI / 2 - 1.15, 2.3, Math.PI / 2 - 0.22, 0.36), lensMat);
+      shades.add(shield);
+      const armMat = new THREE.MeshStandardMaterial({ color: "#0c0e12", roughness: 0.4, metalness: 0.4 });
+      for (const sx of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.007, 0.1), armMat);
+        arm.position.set(sx * 0.075, 0.01, -0.045); shades.add(arm);
+      }
+      shades.quaternion.copy(qAlign);
+      shades.position.copy(upL.clone().multiplyScalar(0.085)).addScaledVector(backL, -0.028);
+      bones.head.add(shades);
+    }
     // dev handle: lets the grip be measured/nudged from the page console
     if (import.meta.env.DEV && typeof window !== "undefined")
-      window.__rig = { scene, bones, THREE, rq: bones.rHand?.getObjectByName("racq") };
+      window.__rig = { scene, bones, THREE, rq: bones.rHand?.getObjectByName("racq"),
+        cap: bones.head?.getObjectByName("cap") };
     scene.updateMatrixWorld(true);
   }, [scene, bones]);
 
@@ -354,6 +475,12 @@ function Char({ speaking, transcript }) {
   }, [speaking]);
 
   // DEMO.LAB commands (consumed once per cmdId) + playback state reporting
+  const setGrip = (name) => {
+    const rq = bones.rHand && bones.rHand.getObjectByName("racq");
+    if (!rq) return;
+    demo.grip = GRIPS[name] ? name : "continental";
+    fitRacquetToHand(scene, bones, rq, demo.grip);
+  };
   const runDemoCmd = () => {
     const a = demo.active ? A.actions.get(demo.active) : null;
     switch (demo.cmd) {
@@ -365,12 +492,15 @@ function Char({ speaking, transcript }) {
             act.paused = false; act.timeScale = demo.speed;
             switchTo(act, 0.25); A.currentName = demo.arg;
             demo.active = demo.arg; demo.paused = false;
+            const move = DEMO_MOVES.find((m) => m[1] === demo.arg);
+            setGrip((move && move[2]) || "continental"); // each stroke has its grip
           } catch (e) { console.warn("[demo]", demo.arg, e); }
         })();
         break;
       case "exit":
-        if (demo.active) { demo.active = null; playLoop("idle", 0.4); }
+        if (demo.active) { demo.active = null; playLoop("idle", 0.4); setGrip("continental"); }
         break;
+      case "grip": setGrip(demo.arg); break;
       case "pause": if (a) { a.paused = true; demo.paused = true; } break;
       case "play": if (a) { a.paused = false; demo.paused = false; } break;
       case "speed": demo.speed = demo.arg; if (a) a.timeScale = demo.arg; break;
@@ -413,12 +543,15 @@ function Char({ speaking, transcript }) {
   };
 
   useFrame((state, dt) => {
+    if (import.meta.env.DEV) { window.__cam = state.camera; window.__ctr = state.controls; }
     if (demo.cmdId !== A.demoSeen) { A.demoSeen = demo.cmdId; runDemoCmd(); }
     if (A.mixer) A.mixer.update(dt);
-    // GRIP.CAM pose: hold the point gesture at its apex while the closeup is on
+    // GRIP.CAM pose: hold the point gesture at its apex while the closeup is on.
+    // Clamp-and-pause (not just pause) — recovers even if a slow clip load let
+    // the gesture run past the apex before this check saw it.
     if (A.gripPose && A.gripFreezeAt) {
       const pa = A.actions.get("point");
-      if (pa && !pa.paused && pa.time >= A.gripFreezeAt) pa.paused = true;
+      if (pa && pa.time >= A.gripFreezeAt) { pa.time = A.gripFreezeAt; pa.paused = true; }
     }
     // GRIP.CAM camera: fly to the fist -> orbit-follow it -> fly home
     if (!LOOK_HAND && A.grip && bones.rHand && state.controls) {
@@ -608,16 +741,16 @@ function Char({ speaking, transcript }) {
   return <group ref={group}><primitive object={scene} /></group>;
 }
 
-function GlowDisc() {
+function GlowDisc({ T }) {
   const tex = useMemo(() => {
     const c = document.createElement("canvas"); c.width = c.height = 256;
     const g = c.getContext("2d");
     const gr = g.createRadialGradient(128, 128, 8, 128, 128, 126);
-    gr.addColorStop(0, "rgba(120,240,140,.45)"); gr.addColorStop(0.55, "rgba(60,160,90,.14)");
+    gr.addColorStop(0, T.disc[0]); gr.addColorStop(0.55, T.disc[1]);
     gr.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
     return new THREE.CanvasTexture(c);
-  }, []);
+  }, [T]);
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
       <circleGeometry args={[1.6, 48]} />
@@ -626,7 +759,8 @@ function GlowDisc() {
   );
 }
 
-export default function CoachChar3D({ speaking, transcript }) {
+export default function CoachChar3D({ speaking, transcript, theme }) {
+  const T = THEMES[theme] || THEMES.neon;
   const [glKey, setGlKey] = useState(0);
   const [camTarget, setCamTarget] = useState([0, 1.0, 0]);
   useEffect(() => {
@@ -646,19 +780,20 @@ export default function CoachChar3D({ speaking, transcript }) {
           setTimeout(() => setGlKey((k) => k + 1), 300);
         });
       }}>
-      <color attach="background" args={["#020a06"]} />
-      <fog attach="fog" args={["#020a06", 7, 13]} />
-      <hemisphereLight args={["#ffffff", "#1a241c", 1.5]} />
+      <color attach="background" args={[T.bg]} />
+      <fog attach="fog" args={[T.bg, 7, 13]} />
+      <hemisphereLight args={["#ffffff", T.hemiGround, T.hemiI]} />
       <directionalLight position={[2.5, 4, 2.5]} intensity={2.4} />
-      <directionalLight position={[-3, 2, 1.5]} intensity={0.9} color="#cfe0f0" />
-      <pointLight position={[-2.5, 2.2, -2.4]} intensity={14} color="#c8ff00" distance={8} />
+      <directionalLight position={[-3, 2, 1.5]} intensity={0.9} color={T.fill2} />
+      <pointLight position={[-2.5, 2.2, -2.4]} intensity={T.accentI} color={T.accent} distance={8} />
       {!FLAGS.has("nomodel") && <Char speaking={speaking} transcript={transcript} />}
-      <GlowDisc />
+      <GlowDisc T={T} />
+      {!FLAGS.has("nocourt") && <CourtEnv theme={theme} />}
       {!FLAGS.has("noshadow") &&
         <ContactShadows position={[0, 0.01, 0]} opacity={0.6} scale={6} blur={2.4} far={2.2} resolution={512} frames={Infinity} />}
       {!FLAGS.has("nogrid") &&
-        <Grid args={[14, 14]} cellSize={0.35} cellColor="#12301d" sectionSize={1.4}
-          sectionColor="#1f4a2c" fadeDistance={9} infiniteGrid position={[0, 0, 0]} />}
+        <Grid args={[14, 14]} cellSize={0.35} cellColor={T.gridCell} sectionSize={1.4}
+          sectionColor={T.gridSec} fadeDistance={9} infiniteGrid position={[0, 0, 0]} />}
       {!LOOK_HAND &&
         <OrbitControls makeDefault enablePan={false} minDistance={0.3} maxDistance={6}
           target={camTarget} autoRotate autoRotateSpeed={0.5} enableDamping />}

@@ -9,9 +9,15 @@ import "./App.css";
 
 const Technique = lazy(() => import("./components/Technique"));
 
+const THEME_NAMES = ["neon", "clay", "blue"];
+
 export default function App() {
   const [profile, setProfile] = useState(loadProfile);
   const [tab, setTab] = useState("coach");
+  const [theme, setTheme] = useState(() =>
+    localStorage.getItem("coach_theme") ||
+    new URLSearchParams(window.location.search).get("theme") || "neon");
+  const pickTheme = (t) => { setTheme(t); localStorage.setItem("coach_theme", t); };
   const coach = useCoach();
 
   // First run (no saved profile) → onboarding.
@@ -31,6 +37,14 @@ export default function App() {
           <button className={"tab" + (tab === "coach" ? " on" : "")} onClick={() => setTab("coach")}>COACH</button>
           <button className={"tab" + (tab === "tech" ? " on tech" : "")} onClick={() => setTab("tech")}>TECHNIQUE.3D</button>
         </div>
+        <div className="tabs" title="сцена корта">
+          {THEME_NAMES.map((t) => (
+            <button key={t} className={"tab" + (theme === t ? " on" : "")}
+              style={{ padding: "3px 8px", fontSize: 10 }} onClick={() => pickTheme(t)}>
+              {t.toUpperCase()}
+            </button>
+          ))}
+        </div>
         <div className="kpis">
           <span><span className="dim">PLAYER</span> <span className="wd">{profile.name}</span></span>
           <span className="sep">·</span>
@@ -48,7 +62,7 @@ export default function App() {
       {tab === "coach" ? (
         <>
           <div className="middle">
-            <CoachViewport transcript={coach.transcript} speaking={coach.speaking} recording={coach.recording} />
+            <CoachViewport transcript={coach.transcript} speaking={coach.speaking} recording={coach.recording} theme={theme} />
             <Dashboard data={profile} />
           </div>
           <CommandLine {...coach} />

@@ -2,7 +2,7 @@
 // orbit the frozen coach with the mouse. Pilot runs on the Mixamo base clips;
 // bought tennis mocap drops straight into DEMO_MOVES.
 import { useEffect, useRef, useState } from "react";
-import { demo, demoCmd, DEMO_MOVES } from "../demoBus";
+import { demo, demoCmd, DEMO_MOVES, GRIPS } from "../demoBus";
 
 const SPEEDS = [0.1, 0.25, 0.5, 1];
 
@@ -32,6 +32,22 @@ export default function DemoLab() {
         <span className="nm">{demo.gripCam ? "GRIP.CAM — вернуть камеру" : "GRIP.CAM — показать хват"}</span>
         <span className="dur">zoom</span>
       </div>
+
+      {/* live grip switcher: flip between real tennis grips while inspecting */}
+      {demo.gripCam && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0 8px" }}>
+          {Object.entries(GRIPS).map(([key, g]) => (
+            <button key={key} className={"tab" + (demo.grip === key ? " on" : "")}
+              style={{ padding: "2px 8px", fontSize: 11 }} title={g.hint}
+              onClick={() => demoCmd("grip", key)}>
+              {g.label}
+            </button>
+          ))}
+          <span className="dim" style={{ fontSize: 10, alignSelf: "center" }}>
+            {GRIPS[demo.grip]?.hint}
+          </span>
+        </div>
+      )}
 
       {DEMO_MOVES.map(([label, key]) => (
         <div key={key}

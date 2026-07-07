@@ -9,7 +9,7 @@ const IS_CH28 = typeof window !== "undefined" &&
 const COACH_TAG = IS_CH28 ? "CH28.PRO" : "AVATURN.T2";
 const RIG_TAG = IS_CH28 ? "body+fingers" : "body+fingers+face";
 
-export default function CoachViewport({ transcript, speaking, recording }) {
+export default function CoachViewport({ transcript, speaking, recording, theme }) {
   return (
     <div className="viewport">
       <span className="cor tl" /><span className="cor tr" /><span className="cor bl" /><span className="cor br" />
@@ -24,7 +24,7 @@ export default function CoachViewport({ transcript, speaking, recording }) {
 
       <div className="stage">
         <Suspense fallback={<div className="dim" style={{ fontSize: 12 }}>booting coach…</div>}>
-          <CoachChar3D speaking={speaking} transcript={transcript} />
+          <CoachChar3D speaking={speaking} transcript={transcript} theme={theme} />
         </Suspense>
         <span className="reticle tl">+</span>
         <span className="reticle tr">+</span>
