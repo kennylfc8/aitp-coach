@@ -8,9 +8,8 @@ export default function CommandLine({ command, setCommand, send, recording, togg
   return (
     <div className="cmd" onClick={() => inp.current?.focus()}>
       <span className="cor tl" /><span className="cor br" />
-      <span className="gt">&gt;</span>
       <div className="field">
-        {command ? <span>{command}</span> : <span className="ph">ask the coach</span>}
+        {command ? <span>{command}</span> : <span className="ph">Ask the coach…</span>}
         <span className="ccur" />
       </div>
       <input
@@ -32,7 +31,7 @@ export default function CommandLine({ command, setCommand, send, recording, togg
         onClick={(e) => { e.stopPropagation(); send(); }}
         disabled={busy}
       >
-        SEND ▸
+        SEND
       </button>
     </div>
   );

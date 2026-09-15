@@ -22,7 +22,7 @@ export default function DemoLab() {
     <div className="mod">
       <span className="cor tl" /><span className="cor br" />
       <div className="mhead">
-        &gt; DEMO.LAB <span className="chip">{demo.active ? "LIVE" : "pilot"}</span>
+        Demo Lab <span className="chip">{demo.active ? "LIVE" : "PILOT"}</span>
       </div>
 
       {/* GRIP.CAM — camera flies to the racquet fist; works idle or mid-demo */}

@@ -15,8 +15,8 @@ export default function App() {
   const [profile, setProfile] = useState(loadProfile);
   const [tab, setTab] = useState("coach");
   const [theme, setTheme] = useState(() =>
-    localStorage.getItem("coach_theme") ||
-    new URLSearchParams(window.location.search).get("theme") || "neon");
+    new URLSearchParams(window.location.search).get("theme") ||
+    localStorage.getItem("coach_theme") || "neon"); // URL wins: links/tests stay deterministic
   const pickTheme = (t) => { setTheme(t); localStorage.setItem("coach_theme", t); };
   const coach = useCoach();
 
@@ -31,7 +31,7 @@ export default function App() {
     <div className="term">
       <header className="topbar">
         <div className="brand">
-          <span className="bar">▌</span>ACE<span className="sl">//</span>COACH
+          <span className="bar" />ACE&nbsp;COACH
         </div>
         <div className="tabs">
           <button className={"tab" + (tab === "coach" ? " on" : "")} onClick={() => setTab("coach")}>COACH</button>

@@ -15,29 +15,28 @@ export default function CoachViewport({ transcript, speaking, recording, theme }
       <span className="cor tl" /><span className="cor tr" /><span className="cor bl" /><span className="cor br" />
 
       <div className="vstatus">
-        <span>
-          &gt; render: <span className="grn">live</span> · coach: <span className="lime">{COACH_TAG}</span> · rig:{" "}
-          <span className="white">{RIG_TAG}</span> · lipsync: <span className="lime">{speaking ? "on" : "idle"}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="recdot" /> <span className="white">Live</span>
+          <span className="agent">· {COACH_TAG} · {RIG_TAG}</span>
+          {speaking && <span className="lime">speaking</span>}
         </span>
-        <span className="agent">COACH.AGENT — v3.1 █</span>
+        <span className="agent">Coach Agent v3.1</span>
       </div>
 
       <div className="stage">
         <Suspense fallback={<div className="dim" style={{ fontSize: 12 }}>booting coach…</div>}>
           <CoachChar3D speaking={speaking} transcript={transcript} theme={theme} />
         </Suspense>
-        <span className="reticle tl">+</span>
-        <span className="reticle tr">+</span>
-        <span className="reticle bl">COACH.CAM · drag to orbit ▌</span>
+        <span className="reticle bl">drag to orbit</span>
       </div>
 
       <div className="transcript">
         <div className="msg">
-          <span className="who">&gt; coach:</span> {transcript}
+          <span className="who">Coach</span> {transcript}
           <span className="curs" />
         </div>
         <div className="audio">
-          <span className="lbl">AUDIO ▌</span>
+          <span className="lbl">AUDIO</span>
           <div className={"wave" + (recording || speaking ? " live" : "")}>
             {BARS.map((_, i) => (
               <i key={i} style={{

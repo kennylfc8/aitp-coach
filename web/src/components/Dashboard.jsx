@@ -5,12 +5,11 @@ import DemoLab from "./DemoLab";
 
 const API = "http://localhost:8000";
 
-function Meter({ frac, total = 16, red }) {
-  const f = Math.round(Math.max(0, Math.min(1, frac || 0)) * total);
+function Meter({ frac, red }) {
+  const w = Math.max(0, Math.min(1, frac || 0)) * 100;
   return (
-    <span className="meter">
-      <span className={"f" + (red ? " red" : "")}>{"█".repeat(f)}</span>
-      <span className="e">{"░".repeat(total - f)}</span>
+    <span className={"bar" + (red ? " red" : "")}>
+      <i style={{ width: `${w}%` }} />
     </span>
   );
 }
@@ -25,7 +24,7 @@ export default function Dashboard({ data }) {
   if (!d) {
     return (
       <aside className="panel">
-        <div className="mod"><div className="mhead">&gt; PLAYER.RATING</div><div className="dim">loading…</div></div>
+        <div className="mod"><div className="mhead">Player Rating</div><div className="dim">loading…</div></div>
       </aside>
     );
   }
@@ -37,18 +36,20 @@ export default function Dashboard({ data }) {
       {/* PLAYER.RATING */}
       <div className="mod">
         <span className="cor tl" /><span className="cor br" />
-        <div className="mhead">&gt; PLAYER.RATING</div>
+        <div className="mhead">Player Rating</div>
         <div className="rating">
           <span className="dim" style={{ paddingBottom: 6 }}>NTRP</span>
           <span className="now">{(d.utr.value ?? 0).toFixed(1)}</span>
-          <span className="arr">──▸</span>
+          <span className="arr">→</span>
           <span className="tgt">{(d.utr.target ?? 0).toFixed(1)}</span>
         </div>
         <div className="rgrid">
           <div>
             <div className="k">CONFIDENCE</div>
-            <Meter frac={(d.utr.confidence ?? 0) / 100} />
-            <span className="v" style={{ marginLeft: 6 }}>{d.utr.confidence}%</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Meter frac={(d.utr.confidence ?? 0) / 100} />
+              <span className="v">{d.utr.confidence}%</span>
+            </div>
           </div>
           <div><div className="k">DEADLINE</div><span className="v">{d.utr.weeks_left ?? "—"}</span> <span className="dim">weeks</span></div>
           <div><div className="k">FOCUS</div><span className="v red">{(d.utr.focus || "").toLowerCase()}</span></div>
@@ -58,7 +59,7 @@ export default function Dashboard({ data }) {
       {/* TODAY.SESSION */}
       <div className="mod session">
         <span className="cor tl" /><span className="cor br" />
-        <div className="mhead">&gt; TODAY.SESSION <span className="chip">{total}m</span></div>
+        <div className="mhead">Today's Session <span className="chip">{total} min</span></div>
         {d.today_plan.map((x, i) => (
           <div className={"srow" + (i === 0 ? " on" : "")} key={i}>
             <span className="num">{String(i + 1).padStart(2, "0")}</span>
@@ -74,16 +75,16 @@ export default function Dashboard({ data }) {
       {/* WEAK.ZONES */}
       <div className="mod weak">
         <span className="cor tl" /><span className="cor br" />
-        <div className="mhead">&gt; WEAK.ZONES</div>
+        <div className="mhead">Weak Zones</div>
         <div className="wtags">
-          {d.weaknesses.map((w, i) => <span className="wtag" key={i}>! {w.label}</span>)}
+          {d.weaknesses.map((w, i) => <span className="wtag" key={i}>{w.label}</span>)}
         </div>
       </div>
 
       {/* SKILL.MATRIX */}
       <div className="mod">
         <span className="cor tl" /><span className="cor br" />
-        <div className="mhead">&gt; SKILL.MATRIX</div>
+        <div className="mhead">Skill Matrix</div>
         {d.skills.map((s, i) => {
           const red = s.raw < 5;
           return (
