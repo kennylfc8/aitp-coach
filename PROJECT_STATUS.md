@@ -14,6 +14,47 @@
 
 ---
 
+## HANDOFF 2026-11-16 — состояние после большой сессии (читать новому чату)
+
+Чат, в котором это делалось, удалён при переезде на рабочий Claude Code. Всё, что ниже, раньше жило только в нём.
+
+### Что сделано и лежит в git
+- **Тренер-реалист (Avaturn)**: кепка adidas по форме черепа, свободные шорты + патч ног, двухслойная майка, строгий спортивный UI (коммит `8b35e59`).
+- **TECHNIQUE.3D, стабилизация позы** (collab Fable ⇄ Codex): `web/src/poseSampling.js`, `poseTracking.js`, `poseFilter.js`, `metrics.js`; 19 тестов `cd web && npm run test:pose`. Замеры и метод в `docs/3d-technique-analysis.md`.
+  - `numPoses = 1` по умолчанию: при `numPoses > 1` MediaPipe выключает внутренний трекинг одного человека, сырой сигнал в 2.5–4 раза шумнее.
+  - Скрытая вкладка больше не роняет загрузку видео по таймауту (`pose.js`, таймеры считают только видимое время).
+- **Ace — маскот вместо реалиста** (`?char=ace`): `web/src/ace.js`, процедурная голова-мяч на теле Avaturn, без внешних ассетов. Рот на патче сферы (8 вайзем), зрачки за камерой, моргание, squash & stretch по скорости головы, пружинная вторичка, кивок на гласных.
+  - QA: `PLAYWRIGHT_PATH=<playwright-core/index.mjs> node tools/ace_qa.mjs` при запущенном `npm run dev`. 7 проверок, отчёт и кадры в `mockups/characters/ace/qa/`. Листы: `python tools/ace_sheet.py <out.jpg> <cols> <png...>`.
+  - Dev-хуки: `window.__rig` (`A`, `playLoop`, `playOnce`), `window.__face.force` (вайзема без звука), `window.__demo`.
+- **Персонажи**: `docs/characters-bible.md`, концепты `mockups/characters/` (v1 и v2).
+- **Разбор матча**: `docs/match-tagging.md`, `docs/match-01-stats.md` (2-6 2-6, 28 ошибок).
+
+### Решения пользователя по персонажам
+- Уходим от «тренер = я» к гиперболизированным чудикам. Состав v2 американизированный: Coach Walt, Ace, Coach Sarge, Professor Hoot, Dolores.
+- У каждого обязаны быть руки и суставы как у человека: тренер показывает удары. Поэтому Ace = тело атлета + голова-мяч.
+- Остальные четверо требуют image-to-3D. Локально не тянем (Radeon 890M, 4 ГБ VRAM). Варианты: Meshy около $20 или TRELLIS/Hunyuan3D в Colab.
+
+### Хвосты (по приоритету)
+1. Ace: в профиль 90° теряет лицо (глаза на фронте сферы), разнести шире и назад. Воротник читается как лаймовая водолазка. Потом: переключатель персонажей в UI, голос Ace через TTS, панчи камеры.
+2. **Обсудить виды вращения** (топспин, слайс, кик): пользователь просил ОБЯЗАТЕЛЬНО, это корень 3 из 4 корзин ошибок его матча.
+3. 4 цели по технике: (1) джиттер подачи — сделано; (2) тренер показывает удар по голосу; (3) загрузка видео любого удара; (4) двойник игрока рядом с тренером с подсветкой ошибок.
+4. Техника, мелочи: контакт на outdoor-клипе отстаёт на 3–5 кадров; SVG в `docs/img/pose-stability` сняты ещё при 3 позах, перегенерировать; запасной порог контакта для форхенда и бэкхенда.
+5. Пользователь хотел сам прогнать UI на клипах 240 fps и дать клип с двумя людьми.
+6. Пак мокапа ударов ($60, Tenniswoman Motion Cast#01), MATCH.LOG, court vision.
+
+### Что лежит вне git (на диске этого компа)
+- `C:\collab-archive\aitp-coach\`: задания collab, лаунчеры, `refs/` (supervision, McBytePlusPlus), `clips/` (2 подачи) и `clips/yt/` (YouTube 1080p + 6 нарезок, они же в `web/public/_qa/`, mp4 в gitignore).
+- `samples/pose-stability/` (gitignore): захваты и отчёты замеров.
+- `.collab/` (exclude): планы, критика, ревью collab-прогона.
+- `.env`, `data/players/` — никогда не коммитятся, переносить руками (см. `SETUP.md`).
+
+### Грабли
+- Панель браузера в Claude: если скрыта, Chrome морозит `requestAnimationFrame`, анимация стоит. Мерить динамику только headless-харнессом или при видимой панели.
+- Headless Chromium: не передавать `--use-gl=angle --use-angle=swiftshader`, кадры падают до 8 fps. Достаточно `--enable-unsafe-swiftshader`.
+- Collab-лаунчер запускать PowerShell напрямую в фоне, не через `.cmd start`; логи грепать `grep -a`.
+
+---
+
 ## 1) Telegram bot (`src/`) — WORKING, committed & pushed
 Flow: `/start` → name → **adaptive UTR funnel** (tiers 0–3, opt-in depth) → **weekly schedule** (court/solo/gym/match) → `/goal` → periodized program. Plus free-form coach chat + two-way voice + live YouTube videos.
 

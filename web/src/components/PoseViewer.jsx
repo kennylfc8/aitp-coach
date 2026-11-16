@@ -4,18 +4,19 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Line, Grid } from "@react-three/drei";
 import { POSE_CONNECTIONS } from "../pose";
+import { finiteJoint, reliableJoint } from "../poseFilter";
 
 const toVec = (j) => [j.x, -j.y, -j.z];
 
 function Skeleton({ pose }) {
-  if (!pose) return null;
-  const pts = pose.joints.map(toVec);
+  if (!pose?.joints) return null;
+  const pts = pose.joints.map((j, i) => finiteJoint(j) && (reliableJoint(j) || pose.provenance?.[i] === "interpolated") ? toVec(j) : null);
   return (
     <group>
-      {pts.map((p, i) => (
+      {pts.map((p, i) => p && (
         <mesh key={i} position={p}>
           <sphereGeometry args={[0.022, 12, 12]} />
-          <meshStandardMaterial color="#c8ff00" emissive="#3a4a00" />
+          <meshStandardMaterial color={pose.provenance?.[i] === "interpolated" ? "#ffb454" : "#c8ff00"} emissive="#3a4a00" />
         </mesh>
       ))}
       {POSE_CONNECTIONS.map((c, i) => {

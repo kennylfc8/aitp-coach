@@ -1,0 +1,220 @@
+{
+  "startedAt": "2026-10-16T18:56:01.475Z",
+  "tests": {
+    "rigid": {
+      "offsetMin": 0.044,
+      "offsetMax": 0.044,
+      "fps": 60.1
+    },
+    "blink": {
+      "blinksAt": [
+        2.87,
+        5.05,
+        8.07,
+        11.38
+      ],
+      "minEyeScaleY": 0.081
+    },
+    "iris": {
+      "samples": [
+        {
+          "camSide": 0.4,
+          "irisL": [
+            -0.0065,
+            0.0008
+          ],
+          "irisR": [
+            -0.0106,
+            0.001
+          ]
+        },
+        {
+          "camSide": 0,
+          "irisL": [
+            0.0017,
+            0.0005
+          ],
+          "irisR": [
+            -0.0025,
+            0.0005
+          ]
+        },
+        {
+          "camSide": -0.4,
+          "irisL": [
+            0.0103,
+            0
+          ],
+          "irisR": [
+            0.006,
+            -0.0001
+          ]
+        }
+      ],
+      "tracks": true
+    },
+    "visemes": [
+      {
+        "viseme": "viseme_aa",
+        "cell": 1,
+        "squash": 0.06,
+        "scaleY": 0.94,
+        "nodDeg": 4.1,
+        "anim": "talk"
+      },
+      {
+        "viseme": "viseme_E",
+        "cell": 2,
+        "squash": 0.06,
+        "scaleY": 0.94,
+        "nodDeg": 4.1,
+        "anim": "talk"
+      },
+      {
+        "viseme": "viseme_O",
+        "cell": 3,
+        "squash": 0.06,
+        "scaleY": 0.94,
+        "nodDeg": 4.1,
+        "anim": "talk"
+      },
+      {
+        "viseme": "viseme_U",
+        "cell": 4,
+        "squash": 0,
+        "scaleY": 1.069,
+        "nodDeg": 0,
+        "anim": "talk"
+      },
+      {
+        "viseme": "viseme_FF",
+        "cell": 5,
+        "squash": 0,
+        "scaleY": 1.004,
+        "nodDeg": 0,
+        "anim": "talk"
+      },
+      {
+        "viseme": "viseme_PP",
+        "cell": 6,
+        "squash": 0,
+        "scaleY": 1.009,
+        "nodDeg": 0,
+        "anim": "talk"
+      },
+      {
+        "viseme": "viseme_kk",
+        "cell": 0,
+        "squash": 0,
+        "scaleY": 1,
+        "nodDeg": 0,
+        "anim": "talk"
+      },
+      {
+        "viseme": "viseme_sil",
+        "cell": 0,
+        "squash": 0,
+        "scaleY": 1,
+        "nodDeg": 0,
+        "anim": "talk"
+      }
+    ],
+    "demo": {
+      "live": [
+        {
+          "t": 0.29,
+          "stretch": 0,
+          "jig": 0.0013,
+          "anim": "pitch"
+        },
+        {
+          "t": 0.19,
+          "stretch": 0,
+          "jig": 0.0002,
+          "anim": "pitch"
+        },
+        {
+          "t": 0.38,
+          "stretch": 0,
+          "jig": 0.0042,
+          "anim": "pitch"
+        },
+        {
+          "t": 0.58,
+          "stretch": 0.011,
+          "jig": 0.0026,
+          "anim": "pitch"
+        },
+        {
+          "t": 0.78,
+          "stretch": 0,
+          "jig": 0.0029,
+          "anim": "pitch"
+        },
+        {
+          "t": 0.97,
+          "stretch": 0,
+          "jig": 0.0003,
+          "anim": "pitch"
+        },
+        {
+          "t": 1.17,
+          "stretch": 0,
+          "jig": 0.0004,
+          "anim": "pitch"
+        },
+        {
+          "t": 1.36,
+          "stretch": 0,
+          "jig": 0.0014,
+          "anim": "pitch"
+        },
+        {
+          "t": 1.54,
+          "stretch": 0.059,
+          "jig": 0.0011,
+          "anim": "pitch"
+        },
+        {
+          "t": 1.73,
+          "stretch": 0.254,
+          "jig": 0.0042,
+          "anim": "pitch"
+        },
+        {
+          "t": 1.92,
+          "stretch": 0.216,
+          "jig": 0.0066,
+          "anim": "pitch"
+        },
+        {
+          "t": 2.11,
+          "stretch": 0.081,
+          "jig": 0.0045,
+          "anim": "pitch"
+        }
+      ],
+      "trace": {
+        "frames": 326,
+        "stretchMax": 0.28,
+        "jigMaxM": 0.0092,
+        "active": "pitch"
+      },
+      "rest": {
+        "t": 2.72,
+        "stretch": 0,
+        "jig": 0.0001,
+        "anim": "idle"
+      }
+    }
+  },
+  "pass": {
+    "rigid": true,
+    "blink": true,
+    "iris": true,
+    "visemes": true,
+    "demoFollows": true,
+    "motionReacts": true,
+    "motionSettles": true
+  }
+}

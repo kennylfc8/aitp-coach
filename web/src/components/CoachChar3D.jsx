@@ -11,6 +11,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import * as THREE from "three";
+import { buildAceHead, updateAceFace } from "../ace.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getClipFor, buildBoneIndex, getHipsRestY, gestureFor } from "../coachAnims";
 import { lipsyncManager, hasCues, cueAt, audioTime } from "../lipsync";
@@ -117,6 +118,7 @@ function fitRacquetToHand(scene, bones, rq, gripName) {
 const FLAGS = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
 const _tmpShadow = new THREE.Vector3(); // per-frame scratch for the contact shadow
 const CHAR = FLAGS.get("char") === "ch28" ? "ch28" : "avaturn";
+const ACE = FLAGS.get("char") === "ace"; // mascot coach: ball head on the athlete body
 const MODEL_URL = CHAR === "ch28" ? "/Ch28w.glb" : "/AvaturnCoach.glb";
 const JAW_SCALE = parseFloat(FLAGS.get("jaw")) || 1; // mouth-opening strength knob
 const LOOK_HAND = FLAGS.has("lookhand"); // dev: aim the camera at the racquet hand
@@ -815,7 +817,6 @@ function Char({ speaking, transcript }) {
     // elliptical hoop + V-throat + octagonal grip + real string grid (canvas texture)
     if (bones.rHand && !bones.rHand.getObjectByName("racq")) {
       const rq = new THREE.Group(); rq.name = "racq";
-      const frameMat = new THREE.MeshStandardMaterial({ color: "#17191d", roughness: 0.35, metalness: 0.5 });
       const limeMat = new THREE.MeshStandardMaterial({ color: "#c8ff00", roughness: 0.45, metalness: 0.15, emissive: "#3d5500", emissiveIntensity: 0.4 });
       // the racquet inherits the hand bone's scale, so it stays proportional to
       // the athlete no matter how Avaturn sizes the arms — like a grip picked
@@ -990,7 +991,19 @@ function Char({ speaking, transcript }) {
     // sport-fit accessories (default; opt out with ?fit=office): adidas-style cap
     // + sport wraparound shades. Outfit meshes (tank/shorts/sneakers) arrive with
     // the re-exported avatar — Avaturn culls body geometry under clothes.
-    if ((FLAGS.get("fit") || "sport") === "sport" && bones.head && !bones.head.getObjectByName("cap")) {
+    // ACE mascot: hide the human head (skin, hair, eyes, teeth, glasses) and
+    // mount the procedural ball head on the head bone; cap/shades are skipped
+    if (ACE && bones.head && !bones.head.getObjectByName("aceHead")) {
+      scene.updateMatrixWorld(true);
+      scene.traverse((o) => {
+        if (o.isMesh && /Head_Mesh|Eye_Mesh|EyeAO_Mesh|Eyelash_Mesh|Teeth_Mesh|Tongue_Mesh|avaturn_hair|avaturn_glasses/.test(o.name)) o.visible = false;
+      });
+      const qh = bones.head.getWorldQuaternion(new THREE.Quaternion()).invert();
+      const upL = new THREE.Vector3(0, 1, 0).applyQuaternion(qh).normalize();
+      const fwdL = new THREE.Vector3(0, 0, 1).applyQuaternion(qh).projectOnPlane(upL).normalize();
+      scene.userData.ace = buildAceHead(THREE, bones.head, upL, fwdL);
+    }
+    if (!ACE && (FLAGS.get("fit") || "sport") === "sport" && bones.head && !bones.head.getObjectByName("cap")) {
       // head-bone local axes are rig-specific: derive world up/back at bind pose
       scene.updateMatrixWorld(true);
       const qh = bones.head.getWorldQuaternion(new THREE.Quaternion()).invert();
@@ -1416,7 +1429,7 @@ function Char({ speaking, transcript }) {
     // dev handle: lets the grip be measured/nudged from the page console
     if (import.meta.env.DEV && typeof window !== "undefined")
       window.__rig = { scene, bones, THREE, rq: bones.rHand?.getObjectByName("racq"),
-        cap: bones.head?.getObjectByName("cap") };
+        cap: bones.head?.getObjectByName("cap"), A, playLoop, playOnce };
     scene.updateMatrixWorld(true);
   }, [scene, bones]);
 
@@ -1710,7 +1723,10 @@ function Char({ speaking, transcript }) {
         jawGoal = (JAW[target] ?? 0.12) * (0.4 + 0.6 * vol) * JAW_SCALE;
       }
     }
+    if (import.meta.env.DEV && window.__face?.force) target = window.__face.force; // QA: fake visemes without audio
     if (window.__face) { window.__face.lastViseme = target; window.__face.speaking = A.speaking; }
+    if (scene.userData.ace) updateAceFace(scene.userData.ace, { viseme: target, speaking: A.speaking,
+      camera: state.camera, dt, t: A.t, blink: A.blinkT !== null && A.blinkT < 0.18 });
     const k = 1 - Math.exp(-16 * dt); // fast attack/decay, no popping
     for (const m of face.viseme) {
       const dict = m.morphTargetDictionary, inf = m.morphTargetInfluences;

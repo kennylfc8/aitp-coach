@@ -46,4 +46,11 @@ web/public/RobotExpressive.glb
 # (tools/* + negation: our own tools/retarget stays in git, 3rd-party dumps don't)
 tools/*
 !tools/retarget/
+!tools/pose_jitter.mjs
+!tools/pose_capture.mjs
+!tools/ace_qa.mjs
+!tools/ace_sheet.py
 tools/retarget/node_modules/
+# Ace QA: raw frames and run log are regenerable (tools/ace_qa.mjs); sheets + report.json stay
+mockups/characters/ace/qa/*.png
+mockups/characters/ace/qa/run.log

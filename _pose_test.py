@@ -1,94 +1,107 @@
-# Headless smoke test: video -> skeleton, using the SAME MediaPipe Tasks PoseLandmarker
-# (+ same float16 model) the web app uses. No browser, no window — terminal + saved PNGs.
+"""Local CPU capture. Exports all candidates; downstream analysis uses the web JS.
+
+Legacy: python _pose_test.py samples/pose_landmarker_heavy.task
+Controlled baseline: add --legacy (old 30 Hz / first 400 sampling).
+"""
+import argparse
+import bisect
+import json
 import math
-import sys
+import time
+from pathlib import Path
+
 import cv2
+import av
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
-MODEL = sys.argv[1] if len(sys.argv) > 1 else "samples/pose_landmarker.task"
-TAG = "heavy" if "heavy" in MODEL else "lite" if "lite" in MODEL else "full"
-VIDEO = "samples/tennis_sample.mp4"
 
-BODY = [(11, 12), (11, 13), (13, 15), (12, 14), (14, 16), (11, 23), (12, 24),
-        (23, 24), (23, 25), (25, 27), (27, 31), (24, 26), (26, 28), (28, 32),
-        (15, 17), (16, 18)]
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("legacy_model", nargs="?")
+    parser.add_argument("--model")
+    parser.add_argument("--video", default="samples/tennis_sample.mp4")
+    parser.add_argument("--fps", type=float, default=30)
+    parser.add_argument("--max-frames", type=int, default=1200)
+    parser.add_argument("--num-poses", type=int, default=1)
+    parser.add_argument("--output", default="samples/pose-stability/capture.json")
+    parser.add_argument("--legacy", action="store_true")
+    args = parser.parse_args()
+    if not math.isfinite(args.fps) or args.fps <= 0 or args.max_frames < 1:
+        parser.error("fps and max-frames must be positive")
+    model = args.model or args.legacy_model or "samples/pose_landmarker_heavy.task"
+    started = time.perf_counter()
+    cap = cv2.VideoCapture(args.video)
+    if not cap.isOpened():
+        raise ValueError("Cannot open video")
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if fps <= 0 or count <= 0:
+        raise ValueError("Invalid video timing")
+    # OpenCV frame indices are useful identities, but count/fps loses MP4 edit-list
+    # offsets. Read the real PTS using PyAV; keep OpenCV's automatic rotation.
+    with av.open(args.video) as container:
+        timestamps = [float(frame.time) for frame in container.decode(video=0)]
+    if len(timestamps) != count or any(b <= a for a, b in zip(timestamps, timestamps[1:])):
+        raise ValueError("Decoded PTS/frame-index correspondence is not one-to-one")
+    duration = count / fps if args.legacy else timestamps[-1] + 1 / fps
+    total = min(args.max_frames, max(1, math.ceil(duration * args.fps)))
+    grid = [i / args.fps if args.legacy else i * duration / total for i in range(total)]
+    width, height = (int(cap.get(p)) for p in (cv2.CAP_PROP_FRAME_WIDTH, cv2.CAP_PROP_FRAME_HEIGHT))
+    options = vision.PoseLandmarkerOptions(
+        base_options=python.BaseOptions(model_asset_path=model),
+        running_mode=vision.RunningMode.VIDEO, num_poses=args.num_poses)
+    init_start = time.perf_counter()
+    samples, seen = [], set()
+    decode_ms = inference_ms = 0
+    def points(landmarks):
+        return [{k: getattr(p, k) for k in ("x", "y", "z", "visibility", "presence")
+                 if getattr(p, k, None) is not None} for p in landmarks]
+    try:
+        with vision.PoseLandmarker.create_from_options(options) as landmarker:
+            init_ms = (time.perf_counter() - init_start) * 1000
+            for requested in grid:
+                target = min(duration - 0.000001, requested + min(0.001, duration / total / 4))
+                frame_id = min(count - 1, int(requested * fps + 1e-6)) if args.legacy else max(0, bisect.bisect_right(timestamps, target) - 1)
+                if frame_id in seen:
+                    continue
+                tick = time.perf_counter()
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
+                ok, frame = cap.read()
+                if not ok:
+                    raise ValueError(f"Decode failed at {frame_id}")
+                actual_id = int(cap.get(cv2.CAP_PROP_POS_FRAMES)) - 1
+                if actual_id != frame_id:
+                    raise ValueError(f"Decoder returned {actual_id}, expected {frame_id}")
+                seen.add(frame_id)
+                image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                decode_ms += (time.perf_counter() - tick) * 1000
+                tick = time.perf_counter()
+                media_t = frame_id / fps if args.legacy else timestamps[frame_id]
+                result = landmarker.detect_for_video(image, round(media_t * 1000))
+                inference_ms += (time.perf_counter() - tick) * 1000
+                samples.append({"sampleIndex": len(samples), "requestedT": target, "t": media_t,
+                    "decodedId": frame_id, "timestampSource": "legacy-index" if args.legacy else "pyav-pts-opencv-index",
+                    "poses": [{"joints": points(w), "imageJoints": points(n)} for w, n in
+                              zip(result.pose_world_landmarks, result.pose_landmarks)]})
+    finally:
+        cap.release()
+    data = {"schemaVersion": 1, "samples": samples, "meta": {
+        "video": Path(args.video).name, "duration": duration, "width": width, "height": height,
+        "sourceFps": fps, "requestedFps": args.fps, "effectiveFps": len(samples) / duration,
+        "firstDecodedT": samples[0]["t"] if samples else None, "lastDecodedT": samples[-1]["t"] if samples else None,
+        "seeks": len(samples), "uniqueDecoded": len(samples), "inferenceCount": len(samples),
+        "dedupCount": total - len(samples), "numPoses": args.num_poses,
+        "model": Path(model).name, "version": mp.__version__, "delegate": "CPU", "runtime": "Python/OpenCV",
+        "legacy": args.legacy, "modelInitMs": init_ms, "decodeMs": decode_ms, "inferenceMs": inference_ms,
+        "processingMs": decode_ms + inference_ms, "totalMs": (time.perf_counter() - started) * 1000}}
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(data, allow_nan=False), encoding="utf-8")
+    print(json.dumps({"output": str(output), "samples": len(samples), "duration": duration,
+                      "processingMs": round(decode_ms + inference_ms)}))
 
-opts = vision.PoseLandmarkerOptions(
-    base_options=python.BaseOptions(model_asset_path=MODEL),
-    running_mode=vision.RunningMode.VIDEO,
-    num_poses=1,
-)
-landmarker = vision.PoseLandmarker.create_from_options(opts)
 
-cap = cv2.VideoCapture(VIDEO)
-fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-W = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-H = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-frames = detected = 0
-vis_sum = 0.0
-norm = {}          # idx -> [(x,y)]*33  (image-normalized, for drawing)
-wrist = []         # (idx, x, y) right wrist
-sh_ang, hip_ang = [], []
-g = lambda a, b: math.degrees(math.atan2(b[2] - a[2], b[0] - a[0]))  # ground angle from world lms
-
-idx = 0
-while True:
-    ok, frame = cap.read()
-    if not ok:
-        break
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-    res = landmarker.detect_for_video(img, int(idx * 1000 / fps))
-    if res.pose_landmarks:
-        detected += 1
-        lms = res.pose_landmarks[0]
-        vis_sum += sum(l.visibility for l in lms) / len(lms)
-        norm[idx] = [(l.x, l.y) for l in lms]
-        wrist.append((idx, lms[16].x, lms[16].y))
-        if res.pose_world_landmarks:
-            w = res.pose_world_landmarks[0]
-            P = lambda i: (w[i].x, w[i].y, w[i].z)
-            sh_ang.append(g(P(11), P(12)))
-            hip_ang.append(g(P(23), P(24)))
-    idx += 1
-frames = idx
-cap.release()
-
-cov = detected / frames * 100 if frames else 0
-avg_vis = vis_sum / detected if detected else 0
-contact, mx = None, -1
-for i in range(1, len(wrist)):
-    s = math.hypot(wrist[i][1] - wrist[i - 1][1], wrist[i][2] - wrist[i - 1][2])
-    if s > mx:
-        mx, contact = s, wrist[i][0]
-rng = lambda a: (max(a) - min(a)) if a else 0
-
-print(f"video        : {W}x{H} @ {fps:.0f}fps, {frames} frames ({frames/fps:.1f}s)")
-print(f"skeleton     : {detected}/{frames} = {cov:.0f}% coverage")
-print(f"avg visibility: {avg_vis:.2f}  (1.0 = very confident)")
-print(f"contact frame: {contact}  (peak wrist speed)")
-print(f"shoulder turn: {rng(sh_ang):.0f}deg   hip turn: {rng(hip_ang):.0f}deg  (world lms)")
-
-# Save annotated frames (no window) so we can eyeball skeleton quality.
-targets = sorted({t for t in [int(frames * 0.25), contact, int(frames * 0.7)] if t in norm})
-cap = cv2.VideoCapture(VIDEO)
-idx, saved = 0, []
-while True:
-    ok, frame = cap.read()
-    if not ok:
-        break
-    if idx in targets:
-        pts = [(int(x * W), int(y * H)) for (x, y) in norm[idx]]
-        for a, b in BODY:
-            cv2.line(frame, pts[a], pts[b], (0, 255, 200), 3)
-        for p in pts:
-            cv2.circle(frame, p, 5, (0, 255, 0), -1)
-        out = f"samples/_pose_{TAG}_{idx}.png"
-        cv2.imwrite(out, frame)
-        saved.append(out)
-    idx += 1
-cap.release()
-print("annotated:", ", ".join(saved))
+if __name__ == "__main__":
+    main()

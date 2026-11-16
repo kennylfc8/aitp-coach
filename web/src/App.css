@@ -298,3 +298,14 @@ body { background:var(--page); color:var(--soft);
 }
 .pret { position:absolute; color:#b3a888; font-size:12px; letter-spacing:1px; z-index:4; }
 .pret.tl{top:10px;left:12px} .pret.tr{top:10px;right:12px} .pret.bl{bottom:10px;left:12px}
+/* Technique overlays stay above the persistent canvas, preserving its camera. */
+.tech .tech-stage { position: relative; min-height: 360px; flex: 1; }
+.tech .tech-overlay { position: absolute; inset: 0; display: grid; place-content: center; padding: 24px; text-align: center; pointer-events: none; background: var(--page); }
+.tech .tech-selectors { display: flex; flex-wrap: wrap; gap: 8px; }
+.tech .tech-hint { line-height: 1.6; }
+.tech .tech-panel { overflow: auto; }
+.tech .tech-bar { flex-wrap: wrap; }
+.tech .tech-bar select { background: var(--raise); color: var(--soft); border: 1px solid var(--b); border-radius: 9px; padding: 8px; }
+.tech .tech-bar .tech-btn { width: auto; min-width: 38px; padding: 0 8px; }
+.tech .tech-selectors select { min-width: 120px; }
+.tech button:disabled { opacity: 0.45; cursor: default; }
